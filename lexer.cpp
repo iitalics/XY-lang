@@ -31,7 +31,7 @@ bool lexer::open (const std::string& filename)
 
 bool lexer::open_string (const std::string& data)
 {
-	input = std::unique_ptr<std::istream>(new std::stringstream(data));
+	input = std::unique_ptr<std::istream>(new std::istringstream(data));
 	input_opened();
 	return true;
 }
@@ -46,6 +46,8 @@ void lexer::input_opened ()
 
 
 
+//// character streams
+
 char lexer::read ()
 {
 	int out;
@@ -58,18 +60,17 @@ char lexer::read ()
 		
 		if (out == '\n')
 			line++;
+		else if (out == -1)
+		{
+			out = '\0';
+			is_eof = true;
+		}
 	}
 	else
 		out = peek_char;
 	
 	peek_char = '\0';
-	if (out == -1)
-	{
-		is_eof = true;
-		return '\0';
-	}
-	else
-		return (char)out;
+	return (char)out;
 }
 char lexer::peek ()
 {
@@ -80,8 +81,7 @@ char lexer::peek ()
 bool lexer::eof () const
 {
 	return input == nullptr ||
-		is_eof ||
-		(peek_char == '\0' && input->eof());
+		(is_eof && peek_char == '\0');
 }
 int lexer::line_num () const
 {
@@ -98,41 +98,9 @@ const lexer::token& lexer::current () const
 
 
 
-lexer::token::token (int tok_)
-	: tok(tok_) {}
-
-std::string lexer::token::to_str () const
-{
-	switch (tok)
-	{
-	case number_token:
-		{
-			std::stringstream ss;
-			ss << num;
-			return ss.str();
-		}
-	case symbol_token:
-		return str;
-	
-	default:
-		if (tok < 256)
-			return std::string(1, tok);
-		else
-			return "?";
-	}
-}
 
 
-
-
-
-
-
-
-
-
-
-
+//// token parsing
 
 
 void lexer::trim_left ()
@@ -158,38 +126,50 @@ bool lexer::advance ()
 		return parse_num();
 	else if (is_sym_char(peek()))
 		return parse_sym();
-	else
-		current_token.tok = read();
-	return true;
-}
-
-bool lexer::is_sym_char (char c) const
-{
-	return isdigit(c) || isalpha(c) ||
-				c == '_' || c == '#';
-}
-bool lexer::parse_digit (char c, int base, int& out) const
-{
-	c = tolower(c);
-	if (c >= 'a' && c <= 'f')
-	{
-		if (base == 16)
-			out = 10 + c - 'a';
-		else
-			return false;
-	}
-	else if (isdigit(c))
-		out = c - '0';
-	else
-		return false;
+	
+	char chr = read();
+	current_token.tok = chr;
+	
+	for (auto tc : token::two_chars)
+		if (tc.a == chr && tc.b == peek())
+		{
+			read();
+			current_token.tok = tc.tok;
+			return true;
+		}
 	
 	return true;
 }
 
+bool lexer::is_sym_char (char c)
+{
+	return isdigit(c) || isalpha(c) ||
+				c == '_' || c == '#';
+}
+bool lexer::parse_digit (char c, int base, int& out)
+{
+	c = tolower(c);
+	if (isalpha(c))
+		out = 10 + c - 'a';
+	else if (isdigit(c))
+		out = c - '0';
+	else
+		goto fail;
+	
+	if (out >= base)
+		goto fail;
+	
+	return true;
+fail:
+	parent.error().die_lex(*this) 
+		<< "Unexpected token in number literal";
+	return false;
+}
+
 bool lexer::parse_num ()
 {
-	int base = 10, digit;
-	number n = 0;
+	int digit, base = 10;
+	number mag, n = 0;
 	
 	if (peek() == '0')
 	{
@@ -199,18 +179,37 @@ bool lexer::parse_num ()
 			read();
 			base = 16;
 		}
-		// else octal
+		else if (isdigit(peek()))
+			base = 8;
 	}
 	
 	while (is_sym_char(peek()))
 	{
 		if (!parse_digit(read(), base, digit))
+			return false;
+		
+		n = (n * base) + digit;
+	}
+	if (peek() == '.')
+	{
+		read();
+		
+		if (base != 10)
 		{
-			parent.error().die_lex(*this) 
-				<< "Unexpected token in number literal";
+			parent.error().die_lex(*this)
+				<< "Non-base 10 decimals not supported";
 			return false;
 		}
-		n = (n * base) + digit;
+		mag = 1;
+		
+		while (is_sym_char(peek()))
+		{
+			if (!parse_digit(read(), base, digit))
+				return false;
+			
+			mag /= base;
+			n += mag * digit;
+		}
 	}
 	
 	current_token.tok = token::number_token;
@@ -219,13 +218,86 @@ bool lexer::parse_num ()
 }
 bool lexer::parse_sym ()
 {
-	std::stringstream ss;
+	std::ostringstream ss;
 	while (is_sym_char(peek()))
 		ss << read();
+	
+	for (int i = token::keywords.size(); i-- > 0; )
+		if (ss.str() == token::keywords[i])
+		{
+			current_token.tok = token::keyword__start + i;
+			return true;
+		}
 	
 	current_token.tok = token::symbol_token;
 	current_token.str = ss.str();
 	return true;
+}
+
+
+
+
+
+
+
+
+
+
+//// token
+
+lexer::token::token (int tok_)
+	: tok(tok_) {}
+
+std::string lexer::token::to_str () const
+{
+	switch (tok)
+	{
+	case number_token:
+		{
+			std::ostringstream ss;
+			ss << num;
+			return ss.str();
+		}
+	case symbol_token:
+		return "symbol " + str;
+	
+	default:
+		if (tok < 256)
+			return std::string(1, tok);
+		else if (tok >= keyword__start)
+			return "keyword " + keywords[tok - keyword__start];
+		else
+		{
+			for (auto tc : two_chars)
+				if (tc.tok == tok)
+					return tc.str();
+			return "?";
+		}
+	}
+}
+
+
+std::vector<std::string> lexer::token::keywords
+{
+	"let", "struct", "true", "false", "or", "and"
+};
+
+std::vector<lexer::token::two_char> lexer::token::two_chars =
+{
+	two_char("..", seq_token),
+	two_char("==", eql_token),
+	two_char("!=", neq_token),
+	two_char(">=", gre_token),
+	two_char("<=", lse_token)
+};
+
+std::string lexer::token::two_char::str () const
+{
+	char buf[3];
+	buf[0] = a;
+	buf[1] = b;
+	buf[2] = '\0';
+	return std::string(buf);
 }
 
 

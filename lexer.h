@@ -27,14 +27,43 @@ public:
 		std::string str;
 		number num;
 		
-		enum
-		{
-			number_token = 256,
-			symbol_token
-		};
-		
 		std::string to_str () const;
 		inline bool eof () const { return tok == '\0'; }
+		
+		enum
+		{
+			number_token = 1000,
+			symbol_token,
+			
+			_two_chars,
+			seq_token,
+			eql_token,
+			neq_token,
+			gre_token,
+			lse_token,
+			
+			keyword__start = 2000,
+			keyword_let = keyword__start,
+			keyword_struct,
+			keyword_true, keyword_false,
+			keyword_or, keyword_and
+		};
+		
+		struct two_char
+		{
+			char a, b;
+			int tok;
+			
+			inline two_char (const std::string& str, int t)
+				: a(str[0]), b(str[1]), tok(t) {}
+			inline constexpr two_char ()
+				: a('\0'), b('\0'), tok('\0') {}
+			
+			std::string str () const;
+		};
+		
+		static std::vector<std::string> keywords;
+		static std::vector<two_char> two_chars;
 	};
 	
 	
@@ -57,8 +86,8 @@ private:
 	
 	token current_token;
 	
-	bool parse_digit (char c, int base, int& out) const;
-	bool is_sym_char (char c) const;
+	static bool is_sym_char (char c);
+	bool parse_digit (char c, int base, int& out);
 	bool parse_num ();
 	bool parse_sym ();
 };
