@@ -1,0 +1,2 @@
+let twice (x) = ; this function doubles its input
+	x * 2
