@@ -6,7 +6,7 @@ LINKFLAGS=-lm -O3
 
 
 OUTPUT=xy
-SOURCES=		main.cpp
+SOURCES=		main.cpp state.cpp lexer.cpp error.cpp
 
 
 OBJECTS=$(SOURCES:%.cpp=obj/%.o)

@@ -17,3 +17,12 @@
 #include <cstdlib>
 #include <cmath>
 #include <cstring>
+
+
+
+
+
+
+namespace xy {
+	typedef double number;
+};
