@@ -23,7 +23,9 @@ clean:
 	rm -rf $(OUTPUT) $(OBJECTS)
 rebuild: clean all
 
+obj:
+	mkdir obj
 
 
-$(OUTPUT): $(OBJECTS)
+$(OUTPUT): obj $(OBJECTS)
 	$(LINK) $(OBJECTS) $(LINKFLAGS) -o $(OUTPUT)
