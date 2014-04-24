@@ -1,18 +1,1 @@
-let filter (f, []) = []
-
-let filter (f, a : f(a . 0)) =
-	[ a . 0 ] +
-	filter(f, a .. 1)
-
-let filter (f, a) =
-	filter(f, a .. 1)
-;
-
-
-
-let quicksort ([]) = []
-
-let quicksort (a) =
-	quicksort(filter('<= (a . 0), a .. 1)) +
-	[ a . 0 ] +
-	quicksort(filter('> (a . 0), a .. 1))
+4 + 2 * 3

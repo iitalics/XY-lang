@@ -1,12 +1,13 @@
 CXX=g++
-CXXFLAGS=-Wall -Wextra -std=c++11
+CXXFLAGS=-Wall -Wextra -Wno-unused-parameter -std=c++11
 
 LINK=g++
 LINKFLAGS=-lm -O3
 
 
 OUTPUT=xy
-SOURCES=		main.cpp state.cpp lexer.cpp error.cpp
+SOURCES=		main.cpp state.cpp lexer.cpp error.cpp \
+				environment.cpp parser.cpp value.cpp
 
 
 OBJECTS=$(SOURCES:%.cpp=obj/%.o)

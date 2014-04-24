@@ -21,17 +21,9 @@ public:
 	
 	struct token
 	{
-		token (int tok_ = '\0');
-		
-		int tok;
-		std::string str;
-		number num;
-		
-		std::string to_str () const;
-		inline bool eof () const { return tok == '\0'; }
-		
 		enum
 		{
+			eof_token = 0,
 			number_token = 1000,
 			symbol_token,
 			
@@ -49,6 +41,19 @@ public:
 			keyword_or, keyword_and
 		};
 		
+		token (int tok_ = eof_token);
+		
+		int tok;
+		std::string str;
+		number num;
+		
+		std::string to_str () const;
+		bool is_unary_op () const;
+		bool is_binary_op () const;
+		bool is_expression () const;
+		
+		inline bool eof () const { return tok == eof_token; }
+		
 		struct two_char
 		{
 			char a, b;
@@ -64,12 +69,19 @@ public:
 		
 		static std::vector<std::string> keywords;
 		static std::vector<two_char> two_chars;
+		
+		static inline std::string eof_string () { return "<eof>"; }
+		static inline std::string number_string () { return "<number>"; }
+		static inline std::string symbol_string () { return "<symbol>"; }
 	};
 	
 	
 	const token& current () const;
 	bool advance ();
 	void trim_left ();
+	
+	bool expect (int tok, bool adv = false);
+	bool unexpect ();
 	
 private:
 	typedef std::unique_ptr<std::istream> inp_stream;
@@ -78,7 +90,7 @@ private:
 	state& parent;
 	
 	inp_stream input;
-	void input_opened ();
+	bool input_opened ();
 	
 	char peek_char;
 	int line;

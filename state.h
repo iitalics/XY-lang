@@ -1,5 +1,6 @@
 #pragma once
 #include "error.h"
+#include "environment.h"
 
 namespace xy {
 
@@ -14,10 +15,11 @@ public:
 	
 	
 	inline error_handler& error () { return err_handler; }
+	inline environment& global () { return global_env; }
 	
 private:
-	bool dead;
 	error_handler err_handler;
+	environment global_env;
 };
 
 

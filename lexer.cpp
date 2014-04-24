@@ -25,21 +25,21 @@ bool lexer::open (const std::string& filename)
 		
 		return false;
 	}
-	input_opened();
-	return true;
+	return input_opened();
 }
 
 bool lexer::open_string (const std::string& data)
 {
 	input = std::unique_ptr<std::istream>(new std::istringstream(data));
-	input_opened();
-	return true;
+	return input_opened();
 }
 
-void lexer::input_opened ()
+bool lexer::input_opened ()
 {
 	line = 1;
 	peek_char = '\0';
+	
+	return advance();
 }
 
 
@@ -96,6 +96,38 @@ const lexer::token& lexer::current () const
 
 
 
+//// errors
+bool lexer::expect (int tok, bool adv)
+{
+	if (current_token.tok != tok)
+	{
+		std::ostream& ss = parent.error().die_lex(*this);
+		
+		ss << "Expected '";
+		if (tok == token::number_token)
+			ss << token::number_string();
+		else if (tok == token::symbol_token)
+			ss << token::symbol_string();
+		else
+			ss << token(tok).to_str();
+		
+		ss << "', got '" << current_token.to_str() << "'";
+		return false;
+	}
+	else if (adv)
+		return advance();
+	else
+		return true;
+}
+bool lexer::unexpect ()
+{
+	parent.error().die_lex(*this) 
+		<< "Unexpected token '" << current_token.to_str() << "'";
+	return false;
+}
+
+
+
 
 
 
@@ -144,7 +176,7 @@ bool lexer::advance ()
 bool lexer::is_sym_char (char c)
 {
 	return isdigit(c) || isalpha(c) ||
-				c == '_' || c == '#';
+				c == '_' || c == '#' || c == '?';
 }
 bool lexer::parse_digit (char c, int base, int& out)
 {
@@ -252,6 +284,9 @@ std::string lexer::token::to_str () const
 {
 	switch (tok)
 	{
+	case eof_token:
+		return eof_string();
+		
 	case number_token:
 		{
 			std::ostringstream ss;
@@ -259,13 +294,13 @@ std::string lexer::token::to_str () const
 			return ss.str();
 		}
 	case symbol_token:
-		return "symbol " + str;
+		return str;
 	
 	default:
 		if (tok < 256)
 			return std::string(1, tok);
 		else if (tok >= keyword__start)
-			return "keyword " + keywords[tok - keyword__start];
+			return keywords[tok - keyword__start];
 		else
 		{
 			for (auto tc : two_chars)
@@ -274,6 +309,31 @@ std::string lexer::token::to_str () const
 			return "?";
 		}
 	}
+}
+
+bool lexer::token::is_unary_op () const
+{
+	return tok == '-' || tok == '+';
+}
+bool lexer::token::is_binary_op () const
+{
+	return tok == '>' || tok == '<' ||
+		tok == '+' || tok == '-' ||
+		tok == '*' || tok == '/' ||
+		tok == '^' || tok == '.' ||
+		tok == seq_token || tok == eql_token ||
+		tok == neq_token || tok == gre_token ||
+		tok == lse_token;
+}
+bool lexer::token::is_expression () const
+{
+	return is_unary_op() || tok == '(' ||
+		// TODO:
+		// tok == symbol_token ||	variables
+		// tok == '[' ||			lists
+		// tok == '@' ||			lambdas
+		tok == keyword_false || tok == keyword_true ||
+		tok == number_token;
 }
 
 

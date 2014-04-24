@@ -1,6 +1,7 @@
 #include "include.h"
 #include "state.h"
 #include "lexer.h"
+#include "parser.h"
 
 namespace xy {
 
@@ -10,7 +11,7 @@ namespace xy {
 
 
 state::state ()
-	: dead(false)
+	: global_env(*this)
 {
 }
 
@@ -27,19 +28,15 @@ bool state::load (const std::string& filename)
 	if (!lex.open(filename))
 		return false;
 	
+	parser parse(parser(*this, lex));
 	
-	if (!lex.advance())
+	if (!parse.parse_env(global_env))
 		return false;
-		
-	while (!lex.current().eof())
-	{
-		std::cout << "Token: '" << lex.current().to_str() << "'" << std::endl;
-		
-		
-		if (!lex.advance())
-			return false;
-	} 
 	
+	if (!lex.current().eof())
+		return lex.unexpect();
+	
+	// TODO: invoke main()
 	
 	return true;
 }
