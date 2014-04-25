@@ -143,7 +143,7 @@ void lexer::trim_left ()
 			read();
 		
 		if (peek() == ';')
-			while (read() != '\n')
+			while (!eof() && read() != '\n')
 				;
 		else
 			break;
