@@ -46,7 +46,7 @@ std::string value::to_str () const
 		return ss.str();
 		
 	case type_bool:
-		return cond ? "yes" : "no";
+		return cond ? true_string() : false_string();
 		
 	default:
 		return "??";
@@ -193,6 +193,8 @@ std::string value::type_string (value_type t)
 	default: return "??";
 	}
 }
+std::string value::true_string () { return "true"; }
+std::string value::false_string () { return "false"; }
 
 
 };

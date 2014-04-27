@@ -49,6 +49,8 @@ struct value
 	static value from_bool (bool b);
 	
 	static std::string type_string (value_type t);
+	static std::string true_string ();
+	static std::string false_string ();
 };
 
 

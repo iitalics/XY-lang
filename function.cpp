@@ -5,6 +5,10 @@
 namespace xy {
 
 
+// not sure about this one, yet
+/*  #define XY_REVERSE_OVERLOAD_ORDER */
+
+
 function::function (const std::string& name, bool n)
 	: func_name(name), native(n)
 { }
@@ -32,6 +36,13 @@ argument_list::argument_list (const argument_list& other)
 	for (int i = 0; i < size; i++)
 		values[i] = other.values[i];
 }
+argument_list::argument_list (std::initializer_list<value> list)
+	: size(list.size()), values(size == 0 ? nullptr : new value[size])
+{
+	int i = 0;
+	for (auto val : list)
+		values[i++] = val;
+}
 argument_list::~argument_list ()
 {
 	delete[] values;
@@ -56,6 +67,10 @@ int param_list::locate (const std::string& name) const
 		else
 			i++;
 	return -1;
+}
+std::string param_list::param_name (int index) const
+{
+	return params[index].name;
 }
 
 // let (var : cond) = ...
@@ -94,7 +109,7 @@ std::shared_ptr<expression> param_list::condition (const std::string& name)
 
 
 soft_function::soft_function (const std::string& n)
-	: function(n, true)
+	: function(n, false)
 { }
 
 soft_function::~soft_function () {}
@@ -109,22 +124,25 @@ bool soft_function::call (value& out, const argument_list& args, state::scope& p
 {
 	state::scope scope(parent(), std::shared_ptr<closure>(new closure(args)));
 	
-	for (auto overload : overloads)
+#ifdef XY_REVERSE_OVERLOAD_ORDER
+	for (auto it = overloads.crbegin(); it != overloads.crend(); it++)
+#else
+	for (auto it = overloads.cbegin(); it != overloads.cend(); it++)
+#endif
 	{
-		return overload->body->eval(out, scope);
+		return (*it)->body->eval(out, scope);
 	}
 	
-	parent().error().die()
-		<< "No suitable overload for function '" << func_name << "' found";
+	auto& err = parent().error().die();
+	err << "No suitable overload for ";
+	if (func_name.size() == 0)
+		err << "lambda function";
+	else
+		err << "function '" << func_name << "'";
+	err << " found";
 	return false;
 }
 
-
-
-
-soft_function::func_body::func_body (std::shared_ptr<expression> e)
-	: body(e)
-{ }
 
 
 };

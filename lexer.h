@@ -17,6 +17,7 @@ public:
 	bool eof () const;
 	
 	int line_num () const;
+	int col_num () const; // this function currently doesn't work correctly
 	
 	
 	struct token
@@ -93,8 +94,10 @@ private:
 	bool input_opened ();
 	
 	char peek_char;
-	int line;
 	bool is_eof;
+	
+	int line;
+	int col, col_display;
 	
 	token current_token;
 	

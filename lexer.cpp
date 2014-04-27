@@ -1,13 +1,37 @@
 #include "include.h"
 #include "lexer.h"
 #include "state.h"
+#include "value.h"
 
 namespace xy {
 
 
 
+
+std::vector<std::string> lexer::token::keywords
+{
+	"let", "struct",
+	
+	value::true_string(), value::false_string(),
+	
+	"or", "and"
+};
+
+std::vector<lexer::token::two_char> lexer::token::two_chars =
+{
+	two_char("..", seq_token),
+	two_char("==", eql_token),
+	two_char("!=", neq_token),
+	two_char(">=", gre_token),
+	two_char("<=", lse_token)
+};
+
+
+
+
 lexer::lexer (state& parent_)
-	: parent(parent_), line (-1), is_eof(false)
+	: parent(parent_), is_eof(false),
+	  line (-1), col(-1), col_display(-1)
 { }
 
 lexer::~lexer () {}
@@ -37,6 +61,7 @@ bool lexer::open_string (const std::string& data)
 bool lexer::input_opened ()
 {
 	line = 1;
+	col = col_display = 0;
 	peek_char = '\0';
 	
 	return advance();
@@ -59,12 +84,17 @@ char lexer::read ()
 		out = input->get();
 		
 		if (out == '\n')
+		{
 			line++;
+			col = 0;
+		}
 		else if (out == -1)
 		{
 			out = '\0';
 			is_eof = true;
 		}
+		else
+			col++;
 	}
 	else
 		out = peek_char;
@@ -83,15 +113,10 @@ bool lexer::eof () const
 	return input == nullptr ||
 		(is_eof && peek_char == '\0');
 }
-int lexer::line_num () const
-{
-	return line;
-}
-const lexer::token& lexer::current () const
-{
-	return current_token;
-}
 
+int lexer::line_num () const { return line; }
+int lexer::col_num () const { return col_display; }
+const lexer::token& lexer::current () const { return current_token; }
 
 
 
@@ -153,6 +178,8 @@ void lexer::trim_left ()
 bool lexer::advance ()
 {
 	trim_left();
+	
+	col_display = col;
 	
 	if (isdigit(peek()))
 		return parse_num();
@@ -335,20 +362,6 @@ bool lexer::token::is_expression () const
 		tok == number_token;
 }
 
-
-std::vector<std::string> lexer::token::keywords
-{
-	"let", "struct", "yes", "no", "or", "and"
-};
-
-std::vector<lexer::token::two_char> lexer::token::two_chars =
-{
-	two_char("..", seq_token),
-	two_char("==", eql_token),
-	two_char("!=", neq_token),
-	two_char(">=", gre_token),
-	two_char("<=", lse_token)
-};
 
 std::string lexer::token::two_char::str () const
 {

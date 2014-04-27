@@ -44,7 +44,7 @@ std::ostream& error_handler::die_lex (const lexer& lex)
 	if (lex.line_num() != -1)
 	{
 		std::stringstream ss;
-		ss << " [Line " << lex.line_num() << "]";
+		ss << " [line " << lex.line_num()/* << ", col " << lex.col_num()*/ << "]";
 		line_info = ss.str();
 	}
 	

@@ -10,23 +10,70 @@ namespace xy {
 
 parser::parser (state& p, lexer& l)
 	: parent(p), lex(l)
-{
-}
+{ }
 
-parser::~parser ()
-{
-}
+parser::~parser () {}
+
 
 
 struct function_generator
 {
-	function_generator ()
-		: last(nullptr)
+	std::vector<std::shared_ptr<func_body>> all_bodies;
+};
+
+struct symbol_locator
+{
+	symbol_locator (environment& e, state& s, lexer& l)
+		: env(e), parent(s), lex(l)
+	{ }
+	
+	environment& env;
+	state& parent;
+	lexer& lex;
+	
+	std::vector<std::vector<std::string>> symbols;
+	
+	
+	std::ostream& die ()
 	{
+		return parent.error().die_lex(lex);
 	}
 	
-	soft_function* last;
+	bool locate (const std::string& sym, int& out_index, int& out_depth)
+	{
+		int index, depth = 0;
+		for (auto it = symbols.crbegin(); it != symbols.crend(); it++)
+		{
+			index = 0;
+			
+			for (auto s : *it)
+				if (s == sym)
+				{
+					out_index = index;
+					out_depth = depth;
+					return true;
+				}
+				else
+					index++;
+			depth++;
+		}
+		
+		return false;
+	}
+	
+	void push_param_list (const param_list& p)
+	{
+		std::vector<std::string> scope;
+		for (int i = 0; i < p.size(); i++)
+			scope.push_back(p.param_name(i));
+		symbols.push_back(scope);
+	}
+	void pop ()
+	{
+		symbols.pop_back();
+	}
 };
+
 bool parser::parse_env (environment& env)
 {
 	function_generator g;
@@ -43,6 +90,18 @@ bool parser::parse_env (environment& env)
 			break;
 	}
 	
+	symbol_locator locator(env, parent, lex);
+	
+	for (auto body : g.all_bodies)
+	{
+		locator.push_param_list(body->params);
+		
+		if (!body->body->locate_symbols(locator))
+			return false;
+		
+		locator.pop();
+	}
+	
 	return true;
 }
 
@@ -50,18 +109,24 @@ bool parser::parse_declare (environment& env, function_generator& g)
 {
 	if (!lex.expect(lexer::token::keyword_let, true))
 		return false;
+	
+	std::shared_ptr<soft_function> soft_func;
+	
 	if (!lex.expect(lexer::token::symbol_token, false))
 		return false;
 		
 	std::string func_name(lex.current().str);
 	
-	// find function!!
+	if (!lex.advance())
+		return false;
+	
+	// find function
 	std::shared_ptr<function> hard_func =
 		env.find_function(func_name);
-	std::shared_ptr<soft_function> soft_func;
 	
 	if (hard_func == nullptr)
 	{
+		// create new function
 		soft_func = std::shared_ptr<soft_function>(
 						new soft_function(func_name));
 		env.add_function(soft_func);
@@ -73,14 +138,28 @@ bool parser::parse_declare (environment& env, function_generator& g)
 		return false;
 	}
 	else
-		soft_func = std::dynamic_pointer_cast<soft_function>(hard_func); // UGLY :/
+		soft_func = std::static_pointer_cast<soft_function>(hard_func); // UGLY :/
 	
-	if (!lex.advance() ||
-			!lex.expect('(', true))
+	
+	std::shared_ptr<func_body> body;
+	if (!parse_function(body))
+		return false;
+		
+	soft_func->add_overload(body);
+	g.all_bodies.push_back(body);
+	
+	return true;
+}
+
+
+
+
+bool parser::parse_function (std::shared_ptr<func_body>& out)
+{
+	if (!lex.expect('(', true))
 		return false;
 	
-	std::shared_ptr<soft_function::func_body> body(
-		new soft_function::func_body());
+	std::shared_ptr<func_body> body(new func_body());
 	
 	while (lex.current().tok != ')')
 	{
@@ -127,10 +206,12 @@ bool parser::parse_declare (environment& env, function_generator& g)
 	if (!parse_exp(body->body))
 		return false;
 	
-	soft_func->add_overload(body);
-	
+	out = body;
 	return true;
 }
+
+
+
 
 
 
@@ -144,6 +225,10 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 	{
 	case lexer::token::number_token:
 		out = expression::create_const(value::from_number(lex.current().num));
+		break;
+		
+	case lexer::token::symbol_token:
+		out = expression::create_symbol(lex.current().str);
 		break;
 		
 	case lexer::token::keyword_true:
@@ -296,6 +381,7 @@ bool expression::eval (value& out, state::scope& scope)
 	scope().error().die() << "Unimplemented expression?";
 	return false;
 }
+bool expression::locate_symbols (symbol_locator& locator) { return true; }
 bool expression::constant () const { return false; }
 
 
@@ -372,11 +458,66 @@ public:
 		return a->constant() && b->constant();
 	}
 	
+	virtual bool locate_symbols (symbol_locator& locator)
+	{
+		return a->locate_symbols(locator) &&
+			b->locate_symbols(locator);
+	}
+	
 private:
 	std::shared_ptr<expression> a, b;
 	int op;
 };
 
+
+
+class symbol_exp : public expression
+{
+public:
+	symbol_exp (const std::string& s)
+		: type(unresolved), sym(s)
+	{ }
+	
+	virtual bool eval (value& out, state::scope& scope)
+	{
+		switch (type)
+		{
+		case resolved_local:
+			out = scope.local->get(closure_index, closure_depth);
+			return true;
+			
+		default:
+			scope().error().die()
+				<< "Use of unresolved symbol '" << sym << "'";
+			return false;
+		}
+	}
+	
+	virtual bool locate_symbols (symbol_locator& locator)
+	{
+		if (locator.locate(sym, closure_index, closure_depth))
+		{
+			type = resolved_local;
+			return true;
+		}
+		
+		// TODO: globals
+		locator.die()
+			<< "Could not resolve symbol '" << sym << "'";
+		return false;
+	}
+	
+private:
+	enum resolve_type
+	{
+		unresolved,
+		resolved_global,
+		resolved_local
+	};
+	resolve_type type;
+	std::string sym;
+	int closure_index, closure_depth;
+};
 
 state expression::constant_state;
 
@@ -389,6 +530,10 @@ std::shared_ptr<expression> expression::create_binary (const std::shared_ptr<exp
 											int op)
 {
 	return std::shared_ptr<expression>(new binary_exp(a, b, op));
+}
+std::shared_ptr<expression> expression::create_symbol (const std::string& sym)
+{
+	return std::shared_ptr<expression>(new symbol_exp(sym));
 }
 std::shared_ptr<expression> expression::create_true ()
 {

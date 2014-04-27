@@ -2,6 +2,8 @@
 #include "parser.h"
 #include "state.h"
 
+#include <initializer_list>
+
 namespace xy {
 
 class value;
@@ -12,6 +14,7 @@ struct argument_list
 	argument_list (int size = 0);
 	argument_list (const param_list& params);
 	argument_list (const argument_list& other);
+	argument_list (std::initializer_list<value> values);
 	~argument_list ();
 	
 	int size;
@@ -49,11 +52,12 @@ public:
 	// let (value) = ...
 	void add_param (std::shared_ptr<expression> a);
 	
-	int locate (const std::string& name) const; // locate(n) = [-1] OR [0, size )
 	std::shared_ptr<expression> condition (int index);
 	std::shared_ptr<expression> condition (const std::string& name);
-	int size () const;
 	
+	int size () const;
+	int locate (const std::string& name) const; // locate(n) = [-1] OR [0, size )
+	std::string param_name (int index) const;
 private:
 	struct param
 	{
@@ -72,17 +76,18 @@ private:
 };
 
 
+
+
+struct func_body
+{
+	param_list params;
+	std::shared_ptr<expression> body;
+};
+
+
 class soft_function : public function
 {
 public:
-	struct func_body
-	{
-		func_body (std::shared_ptr<expression> body =
-					std::shared_ptr<expression>(nullptr));
-		param_list params;
-		std::shared_ptr<expression> body;
-	};
-	
 	soft_function (const std::string& name);
 	virtual ~soft_function ();
 	
