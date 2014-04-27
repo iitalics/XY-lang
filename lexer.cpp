@@ -298,16 +298,14 @@ std::string lexer::token::to_str () const
 	
 	default:
 		if (tok < 256)
-			return std::string(1, tok);
+			return std::string(1, tok); // char -> string
 		else if (tok >= keyword__start)
 			return keywords[tok - keyword__start];
 		else
-		{
 			for (auto tc : two_chars)
 				if (tc.tok == tok)
 					return tc.str();
-			return "?";
-		}
+		return "?";
 	}
 }
 
@@ -323,7 +321,8 @@ bool lexer::token::is_binary_op () const
 		tok == '^' || tok == '.' ||
 		tok == seq_token || tok == eql_token ||
 		tok == neq_token || tok == gre_token ||
-		tok == lse_token;
+		tok == lse_token ||
+		tok == keyword_and || tok == keyword_or;
 }
 bool lexer::token::is_expression () const
 {
@@ -339,7 +338,7 @@ bool lexer::token::is_expression () const
 
 std::vector<std::string> lexer::token::keywords
 {
-	"let", "struct", "true", "false", "or", "and"
+	"let", "struct", "yes", "no", "or", "and"
 };
 
 std::vector<lexer::token::two_char> lexer::token::two_chars =

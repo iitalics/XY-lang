@@ -3,6 +3,7 @@
 #include "lexer.h"
 #include "state.h"
 #include "value.h"
+#include "function.h"
 
 namespace xy {
 
@@ -17,24 +18,119 @@ parser::~parser ()
 }
 
 
-
-
+struct function_generator
+{
+	function_generator ()
+		: last(nullptr)
+	{
+	}
+	
+	soft_function* last;
+};
 bool parser::parse_env (environment& env)
 {
-	std::shared_ptr<expression> exp;
-	value val;
+	function_generator g;
 	
-	if (!parse_exp(exp))
-		return false;
+	for (;;)
+	{
+		if (lex.current().tok == lexer::token::keyword_let)
+		{
+			if (!parse_declare(env, g))
+				return false;
+		}
+		// else if ( OTHER TOKEN )
+		else
+			break;
+	}
 	
-	if (!exp->eval(val, parent))
-		return false;
-	
-	std::cout << "--> " << val.to_str() << std::endl;
 	return true;
 }
 
-
+bool parser::parse_declare (environment& env, function_generator& g)
+{
+	if (!lex.expect(lexer::token::keyword_let, true))
+		return false;
+	if (!lex.expect(lexer::token::symbol_token, false))
+		return false;
+		
+	std::string func_name(lex.current().str);
+	
+	// find function!!
+	std::shared_ptr<function> hard_func =
+		env.find_function(func_name);
+	std::shared_ptr<soft_function> soft_func;
+	
+	if (hard_func == nullptr)
+	{
+		soft_func = std::shared_ptr<soft_function>(
+						new soft_function(func_name));
+		env.add_function(soft_func);
+	}
+	else if (hard_func->is_native())
+	{
+		parent.error().die_lex(lex)
+			<< "Cannot overload native function '" << func_name << "'";
+		return false;
+	}
+	else
+		soft_func = std::dynamic_pointer_cast<soft_function>(hard_func); // UGLY :/
+	
+	if (!lex.advance() ||
+			!lex.expect('(', true))
+		return false;
+	
+	std::shared_ptr<soft_function::func_body> body(
+		new soft_function::func_body());
+	
+	while (lex.current().tok != ')')
+	{
+		// TODO: conditions
+		if (!lex.expect(lexer::token::symbol_token, false))
+			return false;
+		
+		std::string param_name(lex.current().str);
+		
+		if (!lex.advance())
+			return false;
+		
+		
+		if (body->params.locate(param_name) != -1)
+		{
+			parent.error().die_lex(lex)
+				<< "Parameter '" << param_name << "' already declared";
+			return false;
+		}
+		body->params.add_param(param_name);
+		
+		
+		if (lex.current().tok == ',')
+		{
+			if (!lex.advance())
+				return false;
+			continue;
+		}
+		else if (lex.current().tok == ')')
+		{
+			break;
+		}
+		else
+		{
+			parent.error().die_lex(lex)
+				<< "Expected ',' or ')', got '" << lex.current().to_str() << "'";
+			return false;
+		}
+	}
+	
+	if (!lex.advance() ||
+			!lex.expect('=', true))
+		return false;
+	if (!parse_exp(body->body))
+		return false;
+	
+	soft_func->add_overload(body);
+	
+	return true;
+}
 
 
 
@@ -195,9 +291,9 @@ bool parser::parse_exp (std::shared_ptr<expression>& out)
 ////  expression structure
 
 expression::~expression () { }
-bool expression::eval (value& out, state& s, std::shared_ptr<closure> closure)
+bool expression::eval (value& out, state::scope& scope)
 {
-	s.error().die() << "Unimplemented expression?";
+	scope().error().die() << "Unimplemented expression?";
 	return false;
 }
 bool expression::constant () const { return false; }
@@ -213,7 +309,7 @@ public:
 		: val(v)
 	{}
 	
-	virtual bool eval (value& out, state& s, std::shared_ptr<closure> closure)
+	virtual bool eval (value& out, state::scope& scope)
 	{
 		out = val;
 		return true;
@@ -231,18 +327,38 @@ public:
 		: a(ea), b(eb), op(opr)
 	{}
 	
-	virtual bool eval (value& out, state& s, std::shared_ptr<closure> closure)
+	virtual bool eval (value& out, state::scope& scope)
 	{
 		value va, vb;
 		
-		if (!a->eval(va, s, closure))
+		if (!a->eval(va, scope))
 			return false;
-		if (!b->eval(vb, s, closure))
+		
+		if (op == lexer::token::keyword_and ||
+				op == lexer::token::keyword_or)
+		{
+			// a & b  ==   a ? b : a    ==  !a ? a : b
+			// a | b  ==   a ? a : b    ==   a ? a : bfuckkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+			
+			bool cond = va.condition();
+			if (op == lexer::token::keyword_and)
+				cond = !cond;
+			
+			if (cond)
+			{
+				out = va;
+				return true;
+			}
+			else
+				return b->eval(out, scope);
+		}
+		
+		if (!b->eval(vb, scope))
 			return false;
 		
 		if (!va.apply_operator(out, op, vb))
 		{
-			s.error().die()
+			scope().error().die()
 				<< "Cannot apply operator '" << lexer::token(op).to_str()
 				<< "' to values of type '" << va.type_string() << "' and '" << vb.type_string() << "'";
 			return false;
@@ -255,6 +371,7 @@ public:
 	{
 		return a->constant() && b->constant();
 	}
+	
 private:
 	std::shared_ptr<expression> a, b;
 	int op;
@@ -272,6 +389,10 @@ std::shared_ptr<expression> expression::create_binary (const std::shared_ptr<exp
 											int op)
 {
 	return std::shared_ptr<expression>(new binary_exp(a, b, op));
+}
+std::shared_ptr<expression> expression::create_true ()
+{
+	return std::shared_ptr<expression>(new const_exp(value::from_bool(true)));
 }
 
 

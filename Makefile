@@ -7,7 +7,7 @@ LINKFLAGS=-lm -O3
 
 OUTPUT=xy
 SOURCES=		main.cpp state.cpp lexer.cpp error.cpp \
-				environment.cpp parser.cpp value.cpp
+				environment.cpp parser.cpp value.cpp function.cpp
 
 
 OBJECTS=$(SOURCES:%.cpp=obj/%.o)
