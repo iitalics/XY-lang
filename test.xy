@@ -1,5 +1,5 @@
-let twice (x) =
-	x * 2
+let pow (b, 0) = 1
+let pow (b, n) = b * pow(b, n - 1)
 
 let main () =
-	twice(45)
+	pow(5, 3)
