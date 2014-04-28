@@ -1,2 +1,5 @@
-let main (a, b, c) 	; automatic values: a = 5, b = 10
-	= a + b * 3
+let twice (x) =
+	x * 2
+
+let main () =
+	twice(45)

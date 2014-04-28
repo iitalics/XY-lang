@@ -30,6 +30,7 @@ public:
 	
 	inline bool is_native () const { return native; }
 	inline std::string name () const { return func_name; }
+	inline bool is_lambda () const { return func_name.size() == 0; }
 	
 	virtual bool call (value& out, const argument_list& args, state::scope& scope);
 protected:
@@ -58,6 +59,9 @@ public:
 	int size () const;
 	int locate (const std::string& name) const; // locate(n) = [-1] OR [0, size )
 	std::string param_name (int index) const;
+	
+	
+	bool satisfies (bool& out, state::scope& scope);
 private:
 	struct param
 	{

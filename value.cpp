@@ -1,6 +1,7 @@
 #include "include.h"
 #include "value.h"
 #include "lexer.h"
+#include "function.h"
 
 namespace xy {
 
@@ -17,6 +18,8 @@ value::value (const value& other)
 		num = other.num;
 	if (type == type_bool)
 		cond = other.cond;
+	if (type == type_function)
+		func = other.func;
 }
 
 value& value::operator=(const value& other)
@@ -26,6 +29,8 @@ value& value::operator=(const value& other)
 		num = other.num;
 	if (type == type_bool)
 		cond = other.cond;
+	if (type == type_function)
+		func = other.func;
 	return *this;
 }
 
@@ -48,6 +53,18 @@ std::string value::to_str () const
 	case type_bool:
 		return cond ? true_string() : false_string();
 		
+	case type_function:
+		if (func->is_lambda())
+			return "<lambda function>";
+		else
+		{
+			ss << "<";
+			if (func->is_native())
+				ss << "native ";
+			ss << "function '" << func->name() << "'>";
+			return ss.str();
+		}
+		
 	default:
 		return "??";
 	}
@@ -69,10 +86,16 @@ value value::from_bool (bool b)
 	v.cond = b;
 	return v;
 }
+value value::from_function (std::shared_ptr<function> f)
+{
+	value v(type_function);
+	v.func = f;
+	return v;
+}
 
 
 
-bool value::apply_operator (value& out, int op, const value& other)
+bool value::apply_operator (value& out, int op, const value& other, error_handler& error)
 {
 	switch (op)
 	{
@@ -81,7 +104,7 @@ bool value::apply_operator (value& out, int op, const value& other)
 		return true;
 	
 	case lexer::token::neq_token:
-		out = from_bool(compare(other) & compare_none);
+		out = from_bool(!(compare(other) & compare_none));
 		return true;
 	
 	default: break;
@@ -89,7 +112,7 @@ bool value::apply_operator (value& out, int op, const value& other)
 	
 	if (type != type_number ||
 			other.type != type_number)
-		return false;
+		goto bad_input;
 	
 	out.type = type_number;
 	switch (op)
@@ -104,6 +127,12 @@ bool value::apply_operator (value& out, int op, const value& other)
 		out.num = num * other.num;
 		break;
 	case '/':
+		if (other.num == 0) // obligatory
+		{
+			error.die()
+				<< "Cannot divide by zero";
+			return false;
+		}
 		out.num = num / other.num;
 		break;
 	case '^':
@@ -112,24 +141,57 @@ bool value::apply_operator (value& out, int op, const value& other)
 		
 	case '>':
 		out = from_bool(compare(other) & compare_greater);
-		return true;
+		break;
+		
 	case '<':
 		out = from_bool(!(compare(other) & (compare_greater | compare_equal)));
-		return true;
-	
+		break;
+		
 	case lexer::token::gre_token: // '>='
 		out = from_bool(compare(other) & (compare_greater | compare_equal));
-		return true;
+		break;
 	
 	case lexer::token::lse_token: // '<='
 		out = from_bool(!(compare(other) & compare_greater));
-		return true;
+		break;
 	
 	default:
-		return false;
+		goto bad_input;
 	}
 	
 	return true;
+	
+bad_input:
+	error.die()
+		<< "Cannot apply operator '" << lexer::token(op).to_str()
+		<< "' to values of type '" << type_string() << "' and '" << other.type_string() << "'";
+	return false;
+}
+
+
+bool value::apply_unary (value& out, int op, error_handler& error)
+{
+	switch (op)
+	{
+	case '-':
+		if (type != type_number)
+			goto bad_input;
+		out.num = -num;
+		out.type = type_number;
+		return true;
+		
+	case '!':
+		out.cond = !condition();
+		out.type = type_bool;
+		return true;
+	
+	default: break;
+	}
+bad_input:
+	error.die()
+		<< "Cannot apply unary operator '" << lexer::token(op).to_str() 
+		<< "' to value of type '" << type_string() << "'";
+	return false;
 }
 
 value::comparison value::compare (const value& other)
@@ -155,6 +217,22 @@ value::comparison value::compare (const value& other)
 	default:
 		return compare_none;
 	};
+}
+
+
+bool value::call (value& out, const argument_list& args, state::scope& scope)
+{
+	if (type == type_number && args.size == 1)
+	{
+		return apply_operator(out, '*', args.values[0], scope().error());
+	}
+	else if (type != type_function)
+	{
+		scope().error().die()
+			<< "Cannot apply non-function value '" << to_str() << "'";
+		return false;
+	}
+	return func->call(out, args, scope);
 }
 
 

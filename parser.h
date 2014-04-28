@@ -28,11 +28,11 @@ private:
 	
 	bool parse_exp (std::shared_ptr<expression>& out);
 	bool parse_single_exp (std::shared_ptr<expression>& out);
+	bool parse_exp_prologe (std::shared_ptr<expression>& out, std::shared_ptr<expression> in);
 	
 	bool parse_declare (environment& env, function_generator& g);
 	bool parse_function (std::shared_ptr<func_body>& out);
 };
-
 
 
 
@@ -51,13 +51,13 @@ public:
 	static std::shared_ptr<expression> create_binary (const std::shared_ptr<expression>& a,
 												const std::shared_ptr<expression>& b,
 												int op);
+	static std::shared_ptr<expression> create_unary (const std::shared_ptr<expression>& a, int op);
 	static std::shared_ptr<expression> create_symbol (const std::string& sym);
+	static std::shared_ptr<expression> create_closure_ref (int index, int depth = 0);
 	static std::shared_ptr<expression> create_true ();
 private:
 	static state constant_state;
 };
-
-
 
 
 

@@ -29,7 +29,7 @@ int main ()
 				xy.error().dump();
 			else
 			{
-				std::cout << "main() --> " << output.to_str() << std::endl;
+				std::cout << "main() =\n   " << output.to_str() << std::endl;
 			}
 		}
 		else

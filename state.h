@@ -56,7 +56,7 @@ public:
 	~closure ();
 	
 	value get (int index, int depth = 0);
-	bool set (int index, const value& val);
+	bool set (int index, const value& val);	// muh stateless programming language
 	
 	int size () const;
 private:

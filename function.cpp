@@ -1,6 +1,8 @@
 #include "include.h"
 #include "function.h"
 #include "value.h"
+#include "lexer.h"
+#include "parser.h"
 
 namespace xy {
 
@@ -72,6 +74,10 @@ std::string param_list::param_name (int index) const
 {
 	return params[index].name;
 }
+std::shared_ptr<expression> param_list::condition (int index)
+{
+	return params[index].cond;
+}
 
 // let (var : cond) = ...
 void param_list::add_param (const std::string& name,
@@ -85,14 +91,14 @@ void param_list::add_param (const std::string& name)
 	params.push_back(param(name, expression::create_true()));
 }
 // let (value) = ...
-void param_list::add_param (std::shared_ptr<expression> a)
+void param_list::add_param (std::shared_ptr<expression> right)
 {
+	int index = params.size();
+	auto left = expression::create_closure_ref(index);
+	
+	add_param("", expression::create_binary(left, right, lexer::token::eql_token));
 }
 
-std::shared_ptr<expression> param_list::condition (int index)
-{
-	return nullptr;
-}
 std::shared_ptr<expression> param_list::condition (const std::string& name)
 {
 	int l = locate(name);
@@ -100,6 +106,21 @@ std::shared_ptr<expression> param_list::condition (const std::string& name)
 		return nullptr;
 	else
 		return condition(l);
+}
+bool param_list::satisfies (bool& out, state::scope& scope)
+{
+	value val;
+	
+	for (auto p : params)
+		if (!p.cond->eval(val, scope))
+			return false;
+		else if (!val.condition())
+		{
+			out = false;
+			return true;
+		}
+	out = true;
+	return true;
 }
 
 
@@ -130,7 +151,12 @@ bool soft_function::call (value& out, const argument_list& args, state::scope& p
 	for (auto it = overloads.cbegin(); it != overloads.cend(); it++)
 #endif
 	{
-		return (*it)->body->eval(out, scope);
+		bool good = false;
+		if (!(*it)->params.satisfies(good, scope))
+			return false;
+		
+		if (good)
+			return (*it)->body->eval(out, scope);
 	}
 	
 	auto& err = parent().error().die();

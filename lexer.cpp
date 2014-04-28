@@ -338,7 +338,7 @@ std::string lexer::token::to_str () const
 
 bool lexer::token::is_unary_op () const
 {
-	return tok == '-' || tok == '+';
+	return tok == '-' || tok == '!';
 }
 bool lexer::token::is_binary_op () const
 {
