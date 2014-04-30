@@ -2,6 +2,7 @@
 #include "value.h"
 #include "lexer.h"
 #include "function.h"
+#include "list.h"
 
 namespace xy {
 
@@ -19,7 +20,9 @@ value::value (const value& other)
 	if (type == type_bool)
 		cond = other.cond;
 	if (type == type_function)
-		func = other.func;
+		func_obj = other.func_obj;
+	if (type == type_list)
+		list_obj = other.list_obj;
 }
 
 value& value::operator=(const value& other)
@@ -30,7 +33,9 @@ value& value::operator=(const value& other)
 	if (type == type_bool)
 		cond = other.cond;
 	if (type == type_function)
-		func = other.func;
+		func_obj = other.func_obj;
+	if (type == type_list)
+		list_obj = other.list_obj;
 	return *this;
 }
 
@@ -54,17 +59,27 @@ std::string value::to_str () const
 		return cond ? true_string() : false_string();
 		
 	case type_function:
-		if (func->is_lambda())
+		if (func_obj->is_lambda())
 			return "<lambda function>";
 		else
 		{
 			ss << "<";
-			if (func->is_native())
+			if (func_obj->is_native())
 				ss << "native ";
-			ss << "function '" << func->name() << "'>";
+			ss << "function '" << func_obj->name() << "'>";
 			return ss.str();
 		}
 		
+	case type_list:
+		{
+			int i, size = list_obj->size();
+			ss << "[";
+			for (i = 0; i < size; i++)
+				ss << ((i == 0) ? " " : ", ")
+				   << list_obj->get(i).to_str();
+			ss << " ]";
+			return ss.str();
+		}
 	default:
 		return "??";
 	}
@@ -79,7 +94,6 @@ value value::from_number (number n)
 	v.num = n;
 	return v;
 }
-
 value value::from_bool (bool b)
 {
 	value v(type_bool);
@@ -89,23 +103,56 @@ value value::from_bool (bool b)
 value value::from_function (std::shared_ptr<function> f)
 {
 	value v(type_function);
-	v.func = f;
+	v.func_obj = f;
+	return v;
+}
+value value::from_list (std::shared_ptr<list> l)
+{
+	value v(type_list);
+	v.list_obj = l;
 	return v;
 }
 
 
-
-bool value::apply_operator (value& out, int op, const value& other, error_handler& error)
+bool value::apply_operator (value& out, int op, const value& other, state& parent)
 {
 	switch (op)
 	{
 	case lexer::token::eql_token:
-		out = from_bool(compare(other) & compare_equal);
+		out = from_bool(compare(other, parent) & compare_equal);
 		return true;
 	
 	case lexer::token::neq_token:
-		out = from_bool(!(compare(other) & compare_none));
+		out = from_bool(!(compare(other, parent) & compare_none));
 		return true;
+	
+	case '.':
+		if (type == type_list &&
+				other.type == type_number)
+		{
+			out = list_obj->get((int)(other.num));
+			return true;
+		}
+		break;
+	
+	case lexer::token::seq_token:
+		if (type == type_list &&
+				other.type == type_number)
+		{
+			out = value::from_list(std::shared_ptr<list>(
+						new list_sublist(list_obj, (int)(other.num))));
+			return true;
+		}
+		break;
+	
+	case '+':
+		if (type == type_list &&
+				other.type == type_list)
+		{
+			out = value::from_list(std::shared_ptr<list>(
+					new list_concat(list_obj, other.list_obj)));
+			return true;
+		}
 	
 	default: break;
 	}
@@ -129,7 +176,7 @@ bool value::apply_operator (value& out, int op, const value& other, error_handle
 	case '/':
 		if (other.num == 0) // obligatory
 		{
-			error.die()
+			parent.error().die()
 				<< "Cannot divide by zero";
 			return false;
 		}
@@ -140,19 +187,19 @@ bool value::apply_operator (value& out, int op, const value& other, error_handle
 		break;
 		
 	case '>':
-		out = from_bool(compare(other) & compare_greater);
+		out = from_bool(compare(other, parent) & compare_greater);
 		break;
 		
 	case '<':
-		out = from_bool(!(compare(other) & (compare_greater | compare_equal)));
+		out = from_bool(!(compare(other, parent) & (compare_greater | compare_equal)));
 		break;
 		
 	case lexer::token::gre_token: // '>='
-		out = from_bool(compare(other) & (compare_greater | compare_equal));
+		out = from_bool(compare(other, parent) & (compare_greater | compare_equal));
 		break;
 	
 	case lexer::token::lse_token: // '<='
-		out = from_bool(!(compare(other) & compare_greater));
+		out = from_bool(!(compare(other, parent) & compare_greater));
 		break;
 	
 	default:
@@ -162,14 +209,14 @@ bool value::apply_operator (value& out, int op, const value& other, error_handle
 	return true;
 	
 bad_input:
-	error.die()
+	parent.error().die()
 		<< "Cannot apply operator '" << lexer::token(op).to_str()
 		<< "' to values of type '" << type_string() << "' and '" << other.type_string() << "'";
 	return false;
 }
 
 
-bool value::apply_unary (value& out, int op, error_handler& error)
+bool value::apply_unary (value& out, int op, state& parent)
 {
 	switch (op)
 	{
@@ -188,13 +235,13 @@ bool value::apply_unary (value& out, int op, error_handler& error)
 	default: break;
 	}
 bad_input:
-	error.die()
+	parent.error().die()
 		<< "Cannot apply unary operator '" << lexer::token(op).to_str() 
 		<< "' to value of type '" << type_string() << "'";
 	return false;
 }
 
-value::comparison value::compare (const value& other)
+value::comparison value::compare (const value& other, state& parent)
 {
 	if (type != other.type)
 		return compare_none;
@@ -214,25 +261,30 @@ value::comparison value::compare (const value& other)
 	case type_void: case type_nil:
 		return compare_equal;
 		
+	case type_list:
+		return list_obj->equals(other.list_obj, parent) ? compare_equal : compare_none;
+		
 	default:
 		return compare_none;
 	};
 }
 
 
-bool value::call (value& out, const argument_list& args, state::scope& scope)
+bool value::call (value& out, const argument_list& args, state& parent)
 {
 	if (type == type_number && args.size == 1)
 	{
-		return apply_operator(out, '*', args.values[0], scope().error());
+		return apply_operator(out, '*', args.values[0], parent);
 	}
-	else if (type != type_function)
+	if (type != type_function)
 	{
-		scope().error().die()
+		parent.error().die()
 			<< "Cannot apply non-function value '" << to_str() << "'";
 		return false;
 	}
-	return func->call(out, args, scope);
+	state::scope scope(parent);
+	
+	return func_obj->call(out, args, scope);
 }
 
 
@@ -268,6 +320,7 @@ std::string value::type_string (value_type t)
 	case type_void: return "void";
 	case type_nil: return "nil";
 	case type_bool: return "boolean";
+	case type_list: return "list";
 	default: return "??";
 	}
 }

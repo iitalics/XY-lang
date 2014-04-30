@@ -5,6 +5,7 @@ namespace xy {
 
 class function;
 class error_handler;
+class list;
 struct argument_list;
 
 struct value
@@ -15,8 +16,8 @@ struct value
 		type_nil,
 		type_number,
 		type_bool,
-		type_function
-		/*type_list*/
+		type_function,
+		type_list
 	};
 	enum comparison
 	{
@@ -32,21 +33,28 @@ struct value
 	
 	value_type type;
 	
-	
 	union
 	{
 		number num;
 		bool cond;
 	};
-	std::shared_ptr<function> func;
+	std::shared_ptr<function> func_obj;
+	std::shared_ptr<list> list_obj;
 	
 	
 	bool condition () const;
 	
-	bool apply_operator (value& out, int op, const value& other, error_handler& error);
-	bool apply_unary (value& out, int op, error_handler& error);
-	bool call (value& out, const argument_list& args, state::scope& scope);
-	comparison compare (const value& other);
+	bool apply_operator (value& out, int op, const value& other, state& parent);
+	bool apply_unary (value& out, int op, state& parent);
+	comparison compare (const value& other, state& parent);
+	
+	inline bool equals (const value& other, state& parent)
+	{
+		return compare(other, parent) & compare_equal;
+	}
+	
+	
+	bool call (value& out, const argument_list& args, state& parent);
 	
 	std::string to_str () const;
 	std::string type_string () const;
@@ -60,6 +68,7 @@ struct value
 	static value from_number (number n);
 	static value from_bool (bool b);
 	static value from_function (std::shared_ptr<function> f);
+	static value from_list (std::shared_ptr<list> l);
 	
 	static std::string type_string (value_type t);
 	static std::string true_string ();

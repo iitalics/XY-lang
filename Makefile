@@ -6,7 +6,7 @@ LINKFLAGS=-lm -O3
 
 
 OUTPUT=xy
-SOURCES=		main.cpp state.cpp lexer.cpp error.cpp \
+SOURCES=		main.cpp state.cpp lexer.cpp error.cpp list.cpp \
 				environment.cpp parser.cpp value.cpp function.cpp
 
 

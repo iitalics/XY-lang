@@ -354,10 +354,10 @@ bool lexer::token::is_binary_op () const
 bool lexer::token::is_expression () const
 {
 	return is_unary_op() || tok == '(' ||
+		tok == symbol_token ||
+		tok == '[' ||
 		// TODO:
-		// tok == symbol_token ||	variables
-		// tok == '[' ||			lists
-		// tok == '@' ||			lambdas
+		// tok == '@' || // lambdas
 		tok == keyword_false || tok == keyword_true ||
 		tok == number_token;
 }

@@ -88,7 +88,7 @@ void param_list::add_param (const std::string& name,
 // let (var) = ...
 void param_list::add_param (const std::string& name)
 {
-	params.push_back(param(name, expression::create_true()));
+	params.push_back(param(name, nullptr));//expression::create_true()));
 }
 // let (value) = ...
 void param_list::add_param (std::shared_ptr<expression> right)
@@ -112,7 +112,9 @@ bool param_list::satisfies (bool& out, state::scope& scope)
 	value val;
 	
 	for (auto p : params)
-		if (!p.cond->eval(val, scope))
+		if (p.cond == nullptr)
+			continue;
+		else if (!p.cond->eval(val, scope))
 			return false;
 		else if (!val.condition())
 		{
@@ -142,8 +144,19 @@ void soft_function::add_overload (const std::shared_ptr<func_body>& o)
 }
 
 bool soft_function::call (value& out, const argument_list& args, state::scope& parent)
-{
+{/*
+	std::cout << "calling function " << name() << "(";
+	for (int i = 0; i < args.size; i++)
+	{
+		if (i > 0)
+			std::cout << ", ";
+		std::cout << args.values[i].to_str();
+	}
+	std::cout << ")" << std::endl;*/
+	
+	
 	state::scope scope(parent(), std::shared_ptr<closure>(new closure(args)));
+	std::shared_ptr<expression> to_eval(nullptr);
 	
 #ifdef XY_REVERSE_OVERLOAD_ORDER
 	for (auto it = overloads.crbegin(); it != overloads.crend(); it++)
@@ -156,17 +169,25 @@ bool soft_function::call (value& out, const argument_list& args, state::scope& p
 			return false;
 		
 		if (good)
-			return (*it)->body->eval(out, scope);
+		{
+			to_eval = (*it)->body;
+			break;
+		}
 	}
 	
-	auto& err = parent().error().die();
-	err << "No suitable overload for ";
-	if (func_name.size() == 0)
-		err << "lambda function";
+	if (to_eval == nullptr)
+	{
+		auto& err = parent().error().die();
+		err << "No suitable overload for ";
+		if (func_name.size() == 0)
+			err << "lambda function";
+		else
+			err << "function '" << func_name << "'";
+		err << " found";
+		return false;
+	}
 	else
-		err << "function '" << func_name << "'";
-	err << " found";
-	return false;
+		return to_eval->eval(out, scope);
 }
 
 

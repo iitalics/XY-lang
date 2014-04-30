@@ -1,5 +1,13 @@
-let pow (b, 0) = 1
-let pow (b, n) = b * pow(b, n - 1)
+
+
+
+let map (f, []) = []
+let map (f, a) =
+	[ f(a . 0) ] +
+	map(f, a .. 1)
+
+
+let twice (x) = x * 2
 
 let main () =
-	pow(5, 3)
+	map(twice, [ 1, 2, 3, 5, 8 ])

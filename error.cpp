@@ -39,7 +39,7 @@ std::ostream& error_handler::die ()
 }
 std::ostream& error_handler::die_lex (const lexer& lex)
 {
-	error_class = "Syntax ";
+	error_class = "Parser ";
 	
 	if (lex.line_num() != -1)
 	{

@@ -4,8 +4,28 @@
 #include "state.h"
 #include "value.h"
 #include "function.h"
+#include "list.h"
 
 namespace xy {
+
+
+
+#define SYNTAX_LPAREN '('
+#define SYNTAX_RPAREN ')'
+
+#define SYNTAX_FUNC_L '('
+#define SYNTAX_FUNC_R ')'
+#define SYNTAX_FUNC_PCOND ':'
+#define SYNTAX_FUNC_PSEP ','
+#define SYNTAX_FUNC_PROLOGUE '='
+
+#define SYNTAX_LIST_L '['
+#define SYNTAX_LIST_R ']'
+#define SYNTAX_LIST_SEP ','
+
+
+
+
 
 
 parser::parser (state& p, lexer& l)
@@ -15,11 +35,6 @@ parser::parser (state& p, lexer& l)
 parser::~parser () {}
 
 
-
-struct function_generator
-{
-	std::vector<std::shared_ptr<func_body>> all_bodies;
-};
 
 struct symbol_locator
 {
@@ -59,17 +74,7 @@ struct symbol_locator
 		}
 		
 		return false;
-	}/*
-	bool locate_global (std::shared_ptr<function>& out, const std::string& sym)
-	{
-		auto f = env.find_function(sym);
-		if (f == nullptr)
-			return false;
-		
-		out = f;
-		return true;
-	}*/
-	
+	}
 	void push_param_list (const param_list& p)
 	{
 		std::vector<std::string> scope;
@@ -80,6 +85,34 @@ struct symbol_locator
 	void pop ()
 	{
 		symbols.pop_back();
+	}
+};
+
+
+struct function_generator
+{
+	std::vector<std::shared_ptr<func_body>> all_bodies;
+	
+	bool locate_symbols (symbol_locator& locator)
+	{
+		for (auto body : all_bodies)
+		{
+			locator.push_param_list(body->params);
+			
+			for (int i = body->params.size(); i-- > 0; )
+			{
+				auto cond = body->params.condition(i);
+				if (cond != nullptr &&
+						!cond->locate_symbols(locator))
+					return false;
+			}
+			
+			if (!body->body->locate_symbols(locator))
+				return false;
+			
+			locator.pop();
+		}
+		return true;
 	}
 };
 
@@ -98,27 +131,9 @@ bool parser::parse_env (environment& env)
 		else
 			break;
 	}
-	
 	symbol_locator locator(env, parent, lex);
 	
-	for (auto body : g.all_bodies)
-	{
-		locator.push_param_list(body->params);
-		
-		for (int i = body->params.size(); i-- > 0; )
-		{
-			auto cond = body->params.condition(i);
-			if (!cond->locate_symbols(locator))
-				return false;
-		}
-		
-		if (!body->body->locate_symbols(locator))
-			return false;
-		
-		locator.pop();
-	}
-	
-	return true;
+	return g.locate_symbols(locator);
 }
 
 bool parser::parse_declare (environment& env, function_generator& g)
@@ -172,12 +187,12 @@ bool parser::parse_declare (environment& env, function_generator& g)
 
 bool parser::parse_function (std::shared_ptr<func_body>& out)
 {
-	if (!lex.expect('(', true))
+	if (!lex.expect(SYNTAX_FUNC_L, true))
 		return false;
 	
 	std::shared_ptr<func_body> body(new func_body());
 	
-	while (lex.current().tok != ')')
+	while (lex.current().tok != SYNTAX_FUNC_R)
 	{
 		if (lex.current().tok == lexer::token::symbol_token)
 		{
@@ -197,7 +212,7 @@ bool parser::parse_function (std::shared_ptr<func_body>& out)
 				return false;
 			}
 			
-			if (lex.current().tok == ':')
+			if (lex.current().tok == SYNTAX_FUNC_PCOND)
 			{
 				if (!lex.advance())
 					return false;
@@ -207,6 +222,20 @@ bool parser::parse_function (std::shared_ptr<func_body>& out)
 					return false;
 				
 				body->params.add_param(param_name, cond);
+			}
+			else if (lex.current().is_binary_op())
+			{
+				int op = lex.current().tok;
+				if (!lex.advance())
+					return false;
+				std::shared_ptr<expression> right;
+				if (!parse_single_exp(right))
+					return false;
+				
+				body->params.add_param(param_name,
+					expression::create_binary(expression::create_symbol(param_name),
+					                          right,
+											  op));
 			}
 			else
 				body->params.add_param(param_name);
@@ -222,26 +251,27 @@ bool parser::parse_function (std::shared_ptr<func_body>& out)
 			return lex.unexpect();
 		
 		
-		if (lex.current().tok == ',')
+		if (lex.current().tok == SYNTAX_FUNC_PSEP)
 		{
 			if (!lex.advance())
 				return false;
 			continue;
 		}
-		else if (lex.current().tok == ')')
+		else if (lex.current().tok == SYNTAX_FUNC_R)
 		{
 			break;
 		}
 		else
 		{
 			parent.error().die_lex(lex)
-				<< "Expected ',' or ')', got '" << lex.current().to_str() << "'";
+				<< "Expected '" << SYNTAX_FUNC_PSEP << "' or '" << SYNTAX_FUNC_R
+				<< "', got '" << lex.current().to_str() << "'";
 			return false;
 		}
 	}
 	
 	if (!lex.advance() ||
-			!lex.expect('=', true))
+			!lex.expect(SYNTAX_FUNC_PROLOGUE, true))
 		return false;
 	if (!parse_exp(body->body))
 		return false;
@@ -279,11 +309,11 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 		out = expression::create_const(value::from_bool(false));
 		break;
 		
-	case '(':
+	case SYNTAX_LPAREN:
 		if (!lex.advance())
 			return false;
 		
-		if (lex.current().tok == ')') // void
+		if (lex.current().tok == SYNTAX_RPAREN)
 		{
 			out = expression::create_const(value());
 			break;
@@ -291,9 +321,14 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 		
 		if (!parse_exp(out))
 			return false;
-		if (!lex.expect(')'))
+		if (!lex.expect(SYNTAX_RPAREN))
 			return false;
 		break;
+	
+	case SYNTAX_LIST_L:
+		if (!parse_list(out))
+			return false;
+		goto prologue;
 	
 	default:
 		if (lex.current().is_unary_op())
@@ -307,7 +342,7 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 				return false;
 			
 			out = expression::create_unary(a, op);
-			return true;
+			goto prologue;
 		}
 		return lex.unexpect();
 	}
@@ -315,6 +350,7 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 	if (!lex.advance())
 		return false;
 	
+prologue:
 	return parse_exp_prologe(out, out);// yikes
 }
 
@@ -448,7 +484,7 @@ public:
 			if (!e->eval(arg_list.values[i++], scope))
 				return false;
 		
-		return func.call(out, arg_list, scope);
+		return func.call(out, arg_list, scope());
 	}
 	
 	inline void add (const std::shared_ptr<expression>& arg)
@@ -477,28 +513,29 @@ bool parser::parse_exp_prologe (std::shared_ptr<expression>& out, std::shared_pt
 {
 	for (;;)
 	{
-		if (lex.current().tok == '(')
+		if (lex.current().tok == SYNTAX_FUNC_L)
 		{
 			if (!lex.advance())
 				return false;
 			
 			std::shared_ptr<call_expression> ce(new call_expression(in));
-			while (lex.current().tok != ')')
+			while (lex.current().tok != SYNTAX_FUNC_R)
 			{
 				std::shared_ptr<expression> arg;
 				if (!parse_exp(arg))
 					return false;
 				ce->add(arg);
 				
-				if (lex.current().tok == ',')
+				if (lex.current().tok == SYNTAX_FUNC_PSEP)
 				{
 					if (!lex.advance())
 						return false;
 				}
-				else if (lex.current().tok != ')')
+				else if (lex.current().tok != SYNTAX_FUNC_R)
 				{
 					parent.error().die_lex(lex)
-						<< "Expected ',' or ')', got '" << lex.current().to_str() << "'";
+						<< "Expected '" << SYNTAX_FUNC_PSEP << "' or '" << SYNTAX_FUNC_R
+						<< "', got '" << lex.current().to_str() << "'";
 					return false;
 				}
 			}
@@ -514,6 +551,84 @@ bool parser::parse_exp_prologe (std::shared_ptr<expression>& out, std::shared_pt
 	return true;
 }
 
+class list_expression : public expression
+{
+public:
+	list_expression () {}
+	
+	
+	virtual bool eval (value& out, state::scope& scope)
+	{
+		std::vector<value> vs;
+		value v;
+		
+		for (auto e : items)
+			if (!e->eval(v, scope))
+				return false;
+			else
+				vs.push_back(v);
+		
+		out = value::from_list(std::shared_ptr<list>(new list_basic(vs)));
+		return true;
+	}
+	virtual bool locate_symbols (symbol_locator& locator)
+	{
+		for (auto e : items)
+			if (!e->locate_symbols(locator))
+				return false;
+		return true;
+	}
+	virtual bool constant () const
+	{
+		for (auto e : items)
+			if (!e->constant())
+				return false;
+		return true;
+	}
+	
+	inline void add (const std::shared_ptr<expression>& arg)
+	{
+		items.push_back(arg);
+	}
+	
+private:
+	std::vector<std::shared_ptr<expression>> items;
+};
+
+
+bool parser::parse_list (std::shared_ptr<expression>& out)
+{
+	if (!lex.expect(SYNTAX_LIST_L, true))
+		return false;
+	
+	std::shared_ptr<list_expression> le(new list_expression());
+	std::shared_ptr<expression> e;
+	
+	while (lex.current().tok != SYNTAX_LIST_R)
+	{
+		if (!parse_exp(e))
+			return false;
+		le->add(e);
+		
+		if (lex.current().tok == SYNTAX_LIST_SEP)
+		{
+			if (!lex.advance())
+				return false;
+		}
+		else if (lex.current().tok != SYNTAX_LIST_R)
+		{
+			parent.error().die_lex(lex)
+				<< "Expected '" << SYNTAX_LIST_SEP << "' or '" << SYNTAX_LIST_R
+				<< "', got '" << lex.current().to_str() << "'";
+			return false;
+		}
+	}
+	if (!lex.advance())
+		return false;
+	
+	out = le;
+	return true;
+}
 
 
 
@@ -591,7 +706,7 @@ public:
 		if (!b->eval(vb, scope))
 			return false;
 		
-		return va.apply_operator(out, op, vb, scope().error());
+		return va.apply_operator(out, op, vb, scope());
 	}
 	
 	virtual bool constant () const
@@ -624,7 +739,7 @@ public:
 		if (!a->eval(val, scope))
 			return false;
 			
-		if (!val.apply_unary(out, op, scope().error()))
+		if (!val.apply_unary(out, op, scope()))
 			return false;
 		
 		return true;
