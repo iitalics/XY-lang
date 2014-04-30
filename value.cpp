@@ -321,6 +321,7 @@ std::string value::type_string (value_type t)
 	case type_nil: return "nil";
 	case type_bool: return "boolean";
 	case type_list: return "list";
+	case type_function: return "function";
 	default: return "??";
 	}
 }

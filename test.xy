@@ -1,16 +1,12 @@
 
 
-
-let filter (f, []) = []
-let filter (f, a : f(a . 0)) =
-	[ a . 0 ] +
-	filter(f, a .. 1)
-let filter (f, a) =
-	filter(f, a .. 1)
-;
-
-
+let accum (f, c, []) = c
+let accum (f, c, a) =
+	accum(f, f(c, a . 0), a .. 1)
+	
+let map (f, a) =
+	accum(@(a, x) = a + [ f(x) ], [], a)
 
 let main () =
-	filter(@(x) = x > 3,
-		   [ 8, 1, 2, 4, 2, 3, 5, 6, 6 ])
+	map(@(a) = a + 1, 
+	    [ 4, 3, 1, 9, 8, 7 ])
