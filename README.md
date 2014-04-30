@@ -39,9 +39,11 @@ Lists
 Functions
 -------------------------------
 
-Simple function declaration:
+Simple function declaration and calling:
 
-    let main () = 3
+	let twice (x) = x * 2
+	
+    let main () = twice(4.5)
     
 Overloading with constants:
 
@@ -58,4 +60,12 @@ Overloading with conditions:
 	
 	let main () = sign(-32)   ; = -1
 
-	
+Other parameters may be used in the conditions of a parameter
+
+	let filter (f, []) = []
+	let filter (f, a : f(a . 0)) =
+		[ a . 0 ] +
+		filter(f, a .. 1)
+	let filter (f, a) =
+		filter (f, a .. 1)
+

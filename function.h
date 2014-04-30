@@ -92,7 +92,11 @@ struct func_body
 class soft_function : public function
 {
 public:
+	// normal 'named' function
 	soft_function (const std::string& name);
+	// lambda
+	soft_function (const std::shared_ptr<closure>& scope);
+	
 	virtual ~soft_function ();
 	
 	void add_overload (const std::shared_ptr<func_body>& o);
@@ -100,6 +104,7 @@ public:
 	virtual bool call (value& out, const argument_list& args, state::scope& scope);
 private:
 	std::vector<std::shared_ptr<func_body>> overloads;
+	std::shared_ptr<closure> parent_closure;
 };
 
 

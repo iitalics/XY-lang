@@ -132,7 +132,11 @@ bool param_list::satisfies (bool& out, state::scope& scope)
 
 
 soft_function::soft_function (const std::string& n)
-	: function(n, false)
+	: function(n, false), parent_closure(nullptr)
+{ }
+
+soft_function::soft_function (const std::shared_ptr<closure>& scope)
+	: function("", false), parent_closure(scope)
 { }
 
 soft_function::~soft_function () {}
@@ -144,18 +148,8 @@ void soft_function::add_overload (const std::shared_ptr<func_body>& o)
 }
 
 bool soft_function::call (value& out, const argument_list& args, state::scope& parent)
-{/*
-	std::cout << "calling function " << name() << "(";
-	for (int i = 0; i < args.size; i++)
-	{
-		if (i > 0)
-			std::cout << ", ";
-		std::cout << args.values[i].to_str();
-	}
-	std::cout << ")" << std::endl;*/
-	
-	
-	state::scope scope(parent(), std::shared_ptr<closure>(new closure(args)));
+{
+	state::scope scope(parent(), std::shared_ptr<closure>(new closure(args, parent_closure)));
 	std::shared_ptr<expression> to_eval(nullptr);
 	
 #ifdef XY_REVERSE_OVERLOAD_ORDER

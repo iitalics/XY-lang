@@ -23,6 +23,8 @@ namespace xy {
 #define SYNTAX_LIST_R ']'
 #define SYNTAX_LIST_SEP ','
 
+#define SYNTAX_LAMBDA '@'
+
 
 
 
@@ -93,6 +95,12 @@ struct function_generator
 {
 	std::vector<std::shared_ptr<func_body>> all_bodies;
 	
+	function_generator () {}
+	function_generator (const std::shared_ptr<func_body>& first)
+	{
+		all_bodies.push_back(first);
+	}
+	
 	bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 	{
 		for (auto body : all_bodies)
@@ -120,6 +128,7 @@ bool parser::parse_env (environment& env)
 {
 	function_generator g;
 	
+	std::shared_ptr<symbol_locator> old_loc(locator);
 	locator = std::shared_ptr<symbol_locator>(new symbol_locator(env, parent, lex));
 	
 	for (;;)
@@ -134,7 +143,9 @@ bool parser::parse_env (environment& env)
 			break;
 	}
 	
-	return g.locate_symbols(locator);
+	bool r = g.locate_symbols(locator);
+	locator = old_loc;
+	return r;
 }
 
 bool parser::parse_declare (environment& env, function_generator& g)
@@ -309,6 +320,11 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 	case lexer::token::keyword_false:
 		out = expression::create_const(value::from_bool(false));
 		break;
+		
+	case SYNTAX_LAMBDA:
+		if (!parse_lambda(out))
+			return false;
+		goto prologue;
 		
 	case SYNTAX_LPAREN:
 		if (!lex.advance())
@@ -651,6 +667,48 @@ bool parser::parse_list (std::shared_ptr<expression>& out)
 		return false;
 	
 	out = le;
+	return true;
+}
+
+
+
+class lambda_expression
+	: public expression
+{
+public:
+	lambda_expression (const std::shared_ptr<func_body>& b)
+		: body(b)
+	{ }
+	
+	
+	virtual bool eval (value& out, state::scope& scope)
+	{
+		std::shared_ptr<soft_function> func(new soft_function(scope.local));
+		func->add_overload(body);
+		out = value::from_function(func);
+		return true;
+	}
+	
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
+	{
+		return function_generator(body).locate_symbols(locator);
+	}
+	
+private:
+	std::shared_ptr<func_body> body;
+};
+
+bool parser::parse_lambda (std::shared_ptr<expression>& out)
+{
+	std::shared_ptr<func_body> body;
+	
+	if (!lex.expect(SYNTAX_LAMBDA, true))
+		return false;
+	
+	if (!parse_function(body))
+		return false;
+	
+	out = std::shared_ptr<expression>(new lambda_expression(body));
 	return true;
 }
 

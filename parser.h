@@ -34,6 +34,7 @@ private:
 	bool parse_declare (environment& env, function_generator& g);
 	bool parse_function (std::shared_ptr<func_body>& out);
 	bool parse_list (std::shared_ptr<expression>& out);
+	bool parse_lambda (std::shared_ptr<expression>& out);
 };
 
 

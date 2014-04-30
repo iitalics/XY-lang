@@ -1,13 +1,16 @@
 
 
 
-let map (f, []) = []
-let map (f, a) =
-	[ f(a . 0) ] +
-	map(f, a .. 1)
+let filter (f, []) = []
+let filter (f, a : f(a . 0)) =
+	[ a . 0 ] +
+	filter(f, a .. 1)
+let filter (f, a) =
+	filter(f, a .. 1)
+;
 
 
-let twice (x) = x * 2
 
 let main () =
-	map(twice, [ 1, 2, 3, 5, 8 ])
+	filter(@(x) = x > 3,
+		   [ 8, 1, 2, 4, 2, 3, 5, 6, 6 ])

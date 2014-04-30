@@ -21,15 +21,13 @@ int main ()
 			
 			xy::argument_list args
 				{
-					xy::value::from_number(5),
-					xy::value::from_number(10)
 				};
 			
 			if (!main_func->call(output, args, scope))
 				xy.error().dump();
 			else
 			{
-				std::cout << "main() =\n   " << output.to_str() << std::endl;
+				std::cout << "main =\n   " << output.to_str() << std::endl;
 			}
 		}
 		else
