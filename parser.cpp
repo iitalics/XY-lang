@@ -24,6 +24,8 @@ namespace xy {
 #define SYNTAX_LIST_SEP ','
 
 #define SYNTAX_LAMBDA '@'
+#define SYNTAX_LAMBDA_L '{'
+#define SYNTAX_LAMBDA_R '}'
 
 
 
@@ -417,6 +419,9 @@ struct shunting_yard
 		switch (op)
 		{
 		case '^':
+			return 6;
+		
+		case '.': case lexer::token::seq_token:
 			return 5;
 		
 		case '*': case '/':
@@ -676,39 +681,66 @@ class lambda_expression
 	: public expression
 {
 public:
-	lambda_expression (const std::shared_ptr<func_body>& b)
-		: body(b)
+	lambda_expression ()
 	{ }
 	
 	
 	virtual bool eval (value& out, state::scope& scope)
 	{
 		std::shared_ptr<soft_function> func(new soft_function(scope.local));
-		func->add_overload(body);
+		for (auto body : g.all_bodies)
+			func->add_overload(body);
 		out = value::from_function(func);
 		return true;
 	}
 	
 	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 	{
-		return function_generator(body).locate_symbols(locator);
+		return g.locate_symbols(locator);
 	}
 	
+	void add (const std::shared_ptr<func_body>& body)
+	{
+		g.all_bodies.push_back(body);
+	}
 private:
-	std::shared_ptr<func_body> body;
+	function_generator g;
 };
 
 bool parser::parse_lambda (std::shared_ptr<expression>& out)
 {
+	std::shared_ptr<lambda_expression> e(new lambda_expression());
 	std::shared_ptr<func_body> body;
 	
 	if (!lex.expect(SYNTAX_LAMBDA, true))
 		return false;
 	
-	if (!parse_function(body))
-		return false;
+	if (lex.current().tok == SYNTAX_FUNC_L)
+	{
+		if (!parse_function(body))
+			return false;
+		e->add(body);
+	}
+	else
+	{
+		if (!lex.expect(SYNTAX_LAMBDA_L, true))
+			return false;
+		
+		while (lex.current().tok != SYNTAX_LAMBDA_R)
+		{
+			if (!lex.expect(lexer::token::keyword_let, true))
+				return false;
+			
+			if (!parse_function(body))
+				return false;
+			e->add(body);
+		}
+		
+		if (!lex.advance())
+			return false;
+	}
 	
-	out = std::shared_ptr<expression>(new lambda_expression(body));
+	out = e;
 	return true;
 }
 

@@ -139,8 +139,12 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 		if (type == type_list &&
 				other.type == type_number)
 		{
+			int index(other.num);
+			
+		//	if (index > 
+			
 			out = value::from_list(std::shared_ptr<list>(
-						new list_sublist(list_obj, (int)(other.num))));
+						new list_sublist(list_obj, index)));
 			return true;
 		}
 		break;

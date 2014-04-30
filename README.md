@@ -79,6 +79,10 @@ Lambdas
 Syntax:
 
     @(args) = body
+	
+    @{ let (args1) = body1
+       let (args2) = body2
+       let (args3) = ... }
     
 Example:
 
@@ -87,10 +91,6 @@ Example:
             [ -1, -2, 3, 4, 0, 2, -3, 1, 5 ])  ; = [ -1, -2, 0, 2, -3, 1 ]
 
 Planned, unimplented features:
-    
-    @{ let (args1) = body1
-       let (args2) = body2
-       let (args3) = ... }
     
     #(3 + 2)  ; equiv. to '(@() = 3 + 2)'
     (' * 2)   ; equiv. to '(@(x) = x * 2)'
