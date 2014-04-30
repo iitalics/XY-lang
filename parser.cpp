@@ -93,11 +93,11 @@ struct function_generator
 {
 	std::vector<std::shared_ptr<func_body>> all_bodies;
 	
-	bool locate_symbols (symbol_locator& locator)
+	bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 	{
 		for (auto body : all_bodies)
 		{
-			locator.push_param_list(body->params);
+			locator->push_param_list(body->params);
 			
 			for (int i = body->params.size(); i-- > 0; )
 			{
@@ -110,7 +110,7 @@ struct function_generator
 			if (!body->body->locate_symbols(locator))
 				return false;
 			
-			locator.pop();
+			locator->pop();
 		}
 		return true;
 	}
@@ -119,6 +119,8 @@ struct function_generator
 bool parser::parse_env (environment& env)
 {
 	function_generator g;
+	
+	locator = std::shared_ptr<symbol_locator>(new symbol_locator(env, parent, lex));
 	
 	for (;;)
 	{
@@ -131,7 +133,6 @@ bool parser::parse_env (environment& env)
 		else
 			break;
 	}
-	symbol_locator locator(env, parent, lex);
 	
 	return g.locate_symbols(locator);
 }
@@ -382,6 +383,19 @@ struct shunting_yard
 		exp_stack.push_back(e);
 	}
 	
+	void push_op (int op)
+	{
+		int p = precedence(op);
+		
+		while (op_stack.size() > 0 &&
+				precedence(op_stack.back()) >= p)
+			apply_top();
+		
+		op_stack.push_back(op);
+		
+	}
+	
+	
 	static int precedence (int op)
 	{
 		switch (op)
@@ -399,6 +413,7 @@ struct shunting_yard
 		case lexer::token::neq_token:
 		case lexer::token::gre_token:
 		case lexer::token::lse_token:
+		case '<': case '>':
 			return 2;
 		
 		case lexer::token::keyword_or:
@@ -408,17 +423,6 @@ struct shunting_yard
 		default:
 			return 0;
 		}
-	}
-	
-	void push_op (int op)
-	{
-		int p = precedence(op);
-		
-		while (op_stack.size() > 0 &&
-				precedence(op_stack.back()) >= p)
-			apply_top();
-		
-		op_stack.push_back(op);
 	}
 	
 	
@@ -492,7 +496,7 @@ public:
 		args.push_back(arg);
 	}
 	
-	virtual bool locate_symbols (symbol_locator& locator)
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 	{
 		if (!func_exp->locate_symbols(locator))
 			return false;
@@ -545,11 +549,26 @@ bool parser::parse_exp_prologe (std::shared_ptr<expression>& out, std::shared_pt
 			
 			in = ce;
 		}
-		break;
+		else
+			break;
 	}
 	out = in;
 	return true;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class list_expression : public expression
 {
@@ -559,6 +578,11 @@ public:
 	
 	virtual bool eval (value& out, state::scope& scope)
 	{
+		if (items.size() == 0)
+		{
+			out = value::from_list(list::empty());
+			return true;
+		}
 		std::vector<value> vs;
 		value v;
 		
@@ -571,7 +595,7 @@ public:
 		out = value::from_list(std::shared_ptr<list>(new list_basic(vs)));
 		return true;
 	}
-	virtual bool locate_symbols (symbol_locator& locator)
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 	{
 		for (auto e : items)
 			if (!e->locate_symbols(locator))
@@ -645,7 +669,7 @@ bool expression::eval (value& out, state::scope& scope)
 	scope().error().die() << "Unimplemented expression?";
 	return false;
 }
-bool expression::locate_symbols (symbol_locator& locator) { return true; }
+bool expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator) { return true; }
 bool expression::constant () const { return false; }
 
 
@@ -714,7 +738,7 @@ public:
 		return a->constant() && b->constant();
 	}
 	
-	virtual bool locate_symbols (symbol_locator& locator)
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 	{
 		return a->locate_symbols(locator) &&
 			b->locate_symbols(locator);
@@ -750,7 +774,7 @@ public:
 		return a->constant();
 	}
 	
-	virtual bool locate_symbols (symbol_locator& locator)
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 	{
 		return a->locate_symbols(locator);
 	}
@@ -797,14 +821,14 @@ public:
 		}
 	}
 	
-	virtual bool locate_symbols (symbol_locator& locator)
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 	{
 		if (type != unresolved)
 			return true;
 		
-		if (locator.locate(sym, closure_index, closure_depth))
+		if (locator->locate(sym, closure_index, closure_depth))
 			type = resolved_local;
-		else if (locator.env.find_function(sym) != nullptr)
+		else if (locator->env.find_function(sym) != nullptr)
 			type = resolved_global;
 		
 		return true;

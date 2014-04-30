@@ -25,6 +25,7 @@ public:
 private:
 	state& parent;
 	lexer& lex;
+	std::shared_ptr<symbol_locator> locator;
 	
 	bool parse_exp (std::shared_ptr<expression>& out);
 	bool parse_single_exp (std::shared_ptr<expression>& out);
@@ -45,7 +46,7 @@ public:
 	
 	virtual ~expression ();
 	virtual bool eval (value& out, state::scope& scope);
-	virtual bool locate_symbols (symbol_locator& locator);
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
 	virtual bool constant () const;
 	
 	static std::shared_ptr<expression> create_const (const value& val);
