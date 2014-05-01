@@ -14,10 +14,8 @@ error_handler::error_handler ()
 void error_handler::dump ()
 {
 	if (dead)
-	{
 		std::cerr << "XY " << error_class << "Error" << line_info << ": \n"
 		             "    " << die_stream.str() << std::endl;
-	}
 	
 	flush();
 }	
@@ -44,7 +42,13 @@ std::ostream& error_handler::die_lex (const lexer& lex)
 	if (lex.line_num() != -1)
 	{
 		std::stringstream ss;
-		ss << " [line " << lex.line_num()/* << ", col " << lex.col_num()*/ << "]";
+		ss << " [";
+		
+		std::string fname(lex.file());
+		if (fname.size() > 0)
+			ss << "in '" << fname << "': ";
+		
+		ss << "line " << lex.line_num()/* << ", col " << lex.col_num()*/ << "]";
 		line_info = ss.str();
 	}
 	

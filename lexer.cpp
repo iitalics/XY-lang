@@ -2,6 +2,7 @@
 #include "lexer.h"
 #include "state.h"
 #include "value.h"
+#include "syntax.h"
 
 namespace xy {
 
@@ -31,7 +32,8 @@ std::vector<lexer::token::two_char> lexer::token::two_chars =
 
 lexer::lexer (state& parent_)
 	: parent(parent_), is_eof(false),
-	  line (-1), col(-1), col_display(-1)
+	  line (-1), col(-1), col_display(-1),
+	  file_name("")
 { }
 
 lexer::~lexer () {}
@@ -40,6 +42,8 @@ lexer::~lexer () {}
 
 bool lexer::open (const std::string& filename)
 {
+	file_name = filename;
+	
 	input = inp_stream(new std::fstream(filename, std::ios::in));
 	
 	if (!input->good())
@@ -117,7 +121,7 @@ bool lexer::eof () const
 int lexer::line_num () const { return line; }
 int lexer::col_num () const { return col_display; }
 const lexer::token& lexer::current () const { return current_token; }
-
+std::string lexer::file () const { return file_name; }
 
 
 
@@ -199,6 +203,8 @@ bool lexer::advance ()
 	
 	return true;
 }
+
+
 
 bool lexer::is_sym_char (char c)
 {
@@ -353,11 +359,11 @@ bool lexer::token::is_binary_op () const
 }
 bool lexer::token::is_expression () const
 {
-	return is_unary_op() || tok == '(' ||
+	return is_unary_op() ||
+		tok == SYNTAX_LPAREN ||
+		tok == SYNTAX_LIST_L ||
+		tok == SYNTAX_LAMBDA ||
 		tok == symbol_token ||
-		tok == '[' ||
-		// TODO:
-		// tok == '@' || // lambdas
 		tok == keyword_false || tok == keyword_true ||
 		tok == number_token;
 }

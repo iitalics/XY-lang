@@ -18,7 +18,7 @@ public:
 	
 	int line_num () const;
 	int col_num () const; // this function currently doesn't work correctly
-	
+	std::string file () const;
 	
 	struct token
 	{
@@ -27,6 +27,7 @@ public:
 			eof_token = 0,
 			number_token = 1000,
 			symbol_token,
+			string_token,
 			
 			_two_chars,
 			seq_token,
@@ -98,6 +99,7 @@ private:
 	
 	int line;
 	int col, col_display;
+	std::string file_name;
 	
 	token current_token;
 	

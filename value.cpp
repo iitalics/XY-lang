@@ -141,7 +141,12 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 		{
 			int index(other.num);
 			
-		//	if (index > 
+			if (index < 0)
+			{
+				parent.error().die() 
+					<< "Cannot access negative list index";
+				return false;
+			}
 			
 			out = value::from_list(std::shared_ptr<list>(
 						new list_sublist(list_obj, index)));
