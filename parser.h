@@ -40,29 +40,5 @@ private:
 
 
 
-class expression
-{
-public:
-	// inline expression () {}
-	
-	virtual ~expression ();
-	virtual bool eval (value& out, state::scope& scope);
-	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
-	virtual bool constant () const;
-	
-	static std::shared_ptr<expression> create_const (const value& val);
-	static std::shared_ptr<expression> create_binary (const std::shared_ptr<expression>& a,
-												const std::shared_ptr<expression>& b,
-												int op);
-	static std::shared_ptr<expression> create_unary (const std::shared_ptr<expression>& a, int op);
-	static std::shared_ptr<expression> create_symbol (const std::string& sym);
-	static std::shared_ptr<expression> create_closure_ref (int index, int depth = 0);
-	static std::shared_ptr<expression> create_true ();
-private:
-	static state constant_state;
-};
-
-
-
 
 };

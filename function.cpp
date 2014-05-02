@@ -3,6 +3,7 @@
 #include "value.h"
 #include "lexer.h"
 #include "parser.h"
+#include "expression.h"
 
 namespace xy {
 

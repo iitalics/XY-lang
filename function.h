@@ -8,6 +8,7 @@ namespace xy {
 
 class value;
 class param_list;
+class expression;
 
 struct argument_list
 {
