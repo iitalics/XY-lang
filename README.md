@@ -68,10 +68,12 @@ Other parameters may be used in the conditions of a parameter
         filter(f, a .. 1)
     let filter (f, a) =
         filter (f, a .. 1)
+	; see 'list comprehension' for built-in list filtering
 
 Planned, unimplented features:
 
-    (x -> f)  ; equiv. to 'f(x)'
+	let f () = f() ; tail-call optimization
+    (x -> y)       ; equiv. to 'y(x)'
 
 Lambdas
 -------------------------------
@@ -79,7 +81,7 @@ Lambdas
 Syntax:
 
     @(args) = body
-	
+    
     @{ let (args1) = body1
        let (args2) = body2
        let (args3) = ... }
@@ -94,4 +96,31 @@ Planned, unimplented features:
     
     #(3 + 2)  ; equiv. to '(@() = 3 + 2)'
     (' * 2)   ; equiv. to '(@(x) = x * 2)'
-    (&<=)      ; equiv. to '(@(a, b) = a <= b)'
+    (&<=)     ; equiv. to '(@(x, y) = x <= y)'
+
+List Comprehension
+-------------------------------
+
+Syntax:
+
+    list $ iterator : filter_expression = map_expression
+    ; filter is applied first, followed by map.
+    ; either are optional, but you must supply atleast one
+    
+Examples:
+    
+    let threshold (a, min) = ; list of each value in 'a' not less than 'min'
+        a $ t : t >= min
+    
+    let double_all (a) =     ; list of the values of a, doubled
+        a $ t = t * 2
+
+Globals
+-------------------------------
+
+Unimplemented.  Planned syntax:
+
+	let PI = 3.1415926535
+	
+	let area (r) =
+		PI * r ^ 2

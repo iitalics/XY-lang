@@ -38,7 +38,7 @@ public:
 			
 			keyword__start = 2000,
 			keyword_let = keyword__start,
-			keyword_struct,
+			keyword_with,
 			keyword_true, keyword_false,
 			keyword_or, keyword_and
 		};

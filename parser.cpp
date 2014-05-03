@@ -24,44 +24,6 @@ parser::~parser () {}
 
 
 
-std::ostream& symbol_locator::die ()
-{
-	return parent.error().die_lex(lex);
-}
-
-bool symbol_locator::locate (const std::string& sym, int& out_index, int& out_depth)
-{
-	int index, depth = 0;
-	for (auto it = symbols.crbegin(); it != symbols.crend(); it++)
-	{
-		index = 0;
-		
-		for (auto s : *it)
-			if (s == sym)
-			{
-				out_index = index;
-				out_depth = depth;
-				return true;
-			}
-			else
-				index++;
-		depth++;
-	}
-	
-	return false;
-}
-void symbol_locator::push_param_list (const param_list& p)
-{
-	std::vector<std::string> scope;
-	for (int i = 0; i < p.size(); i++)
-		scope.push_back(p.param_name(i));
-	symbols.push_back(scope);
-}
-void symbol_locator::pop ()
-{
-	symbols.pop_back();
-}
-
 struct function_generator
 {
 	std::vector<std::shared_ptr<func_body>> all_bodies;
@@ -309,6 +271,7 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 		
 		if (!parse_exp(out))
 			return false;
+		
 		if (!lex.expect(SYNTAX_RPAREN))
 			return false;
 		break;
@@ -448,6 +411,11 @@ bool parser::parse_exp (std::shared_ptr<expression>& out)
 		builder.push_exp(exp);
 	}
 	out = builder.finish();
+	
+	if (lex.current().tok == SYNTAX_LCOMP_SEP)
+		if (!parse_list_comp(out, out))
+			return false;
+	
 	return true;
 }
 
@@ -517,56 +485,6 @@ bool parser::parse_exp_prologe (std::shared_ptr<expression>& out, std::shared_pt
 
 
 
-class list_expression : public expression
-{
-public:
-	list_expression () {}
-	
-	
-	virtual bool eval (value& out, state::scope& scope)
-	{
-		if (items.size() == 0)
-		{
-			out = value::from_list(list::empty());
-			return true;
-		}
-		std::vector<value> vs;
-		value v;
-		
-		for (auto e : items)
-			if (!e->eval(v, scope))
-				return false;
-			else
-				vs.push_back(v);
-		
-		out = value::from_list(std::shared_ptr<list>(new list_basic(vs)));
-		return true;
-	}
-	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
-	{
-		for (auto e : items)
-			if (!e->locate_symbols(locator))
-				return false;
-		return true;
-	}
-	virtual bool constant () const
-	{
-		for (auto e : items)
-			if (!e->constant())
-				return false;
-		return true;
-	}
-	
-	inline void add (const std::shared_ptr<expression>& arg)
-	{
-		items.push_back(arg);
-	}
-	
-private:
-	std::vector<std::shared_ptr<expression>> items;
-};
-
-
 bool parser::parse_list (std::shared_ptr<expression>& out)
 {
 	if (!lex.expect(SYNTAX_LIST_L, true))
@@ -607,10 +525,6 @@ class lambda_expression
 	: public expression
 {
 public:
-	lambda_expression ()
-	{ }
-	
-	
 	virtual bool eval (value& out, state::scope& scope)
 	{
 		std::shared_ptr<soft_function> func(new soft_function(scope.local));
@@ -671,6 +585,52 @@ bool parser::parse_lambda (std::shared_ptr<expression>& out)
 }
 
 
+
+bool parser::parse_list_comp (std::shared_ptr<expression>& out, const std::shared_ptr<expression>& list_exp)
+{
+	if (!lex.expect(SYNTAX_LCOMP_SEP, true))
+		return false;
+	if (!lex.expect(lexer::token::symbol_token))
+		return false;
+	
+	std::shared_ptr<expression> e;
+	std::shared_ptr<list_comp_expression> comp(new list_comp_expression(list_exp, lex.current().str));
+	if (!lex.advance())
+		return false;
+	
+	bool any = false;
+	
+	if (lex.current().tok == SYNTAX_LCOMP_FILTER)
+	{
+		if (!lex.advance())
+			return false;
+		if (!parse_exp(e))
+			return false;
+		comp->set_filter(e);
+		any = true;
+	}
+	
+	if (lex.current().tok == SYNTAX_LCOMP_MAP)
+	{
+		if (!lex.advance())
+			return false;
+		if (!parse_exp(e))
+			return false;
+		comp->set_map(e);
+		any = true;
+	}
+	
+	if (!any)
+	{
+		parent.error().die_lex(lex)
+			<< "Expected '" << SYNTAX_LCOMP_FILTER
+			<< "' or '"<< SYNTAX_LCOMP_MAP << "' case in list comprehension";
+		return false;
+	}
+	
+	out = comp;
+	return true;
+}
 
 
 

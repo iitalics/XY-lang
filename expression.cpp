@@ -23,6 +23,57 @@ bool expression::constant () const { return false; }
 
 
 
+std::ostream& symbol_locator::die ()
+{
+	return parent.error().die_lex(lex);
+}
+
+bool symbol_locator::locate (const std::string& sym, int& out_index, int& out_depth)
+{
+	int index, depth = 0;
+	
+	// search backwards
+	for (auto it = symbols.crbegin(); it != symbols.crend(); it++)
+	{
+		index = 0;
+		
+		for (auto s : *it)
+			if (s == sym)
+			{
+				out_index = index;
+				out_depth = depth;
+				return true;
+			}
+			else
+				index++;
+		depth++;
+	}
+	
+	return false;
+}
+void symbol_locator::push_empty ()
+{
+	symbols.push_back(std::vector<std::string>());
+}
+void symbol_locator::push_param_list (const param_list& p)
+{
+	push_empty();
+	for (int i = 0; i < p.size(); i++)
+		add(p.param_name(i));
+}
+void symbol_locator::add (const std::string& name)
+{
+	symbols.back().push_back(name);
+}
+void symbol_locator::pop ()
+{
+	symbols.pop_back();
+}
+
+
+
+
+
 
 
 
@@ -58,6 +109,120 @@ bool call_expression::locate_symbols (const std::shared_ptr<symbol_locator>& loc
 	
 	return true;
 }
+
+
+
+	
+list_expression::list_expression () {}
+bool list_expression::eval (value& out, state::scope& scope)
+{
+	if (items.size() == 0)
+	{
+		out = value::from_list(list::empty());
+		return true;
+	}
+	std::vector<value> vs;
+	value v;
+	
+	for (auto e : items)
+		if (!e->eval(v, scope))
+			return false;
+		else
+			vs.push_back(v);
+	
+	out = value::from_list(std::shared_ptr<list>(new list_basic(vs)));
+	return true;
+}
+bool list_expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator)
+{
+	for (auto e : items)
+		if (!e->locate_symbols(locator))
+			return false;
+	return true;
+}
+bool list_expression::constant () const
+{
+	for (auto e : items)
+		if (!e->constant())
+			return false;
+	return true;
+}
+void list_expression::add (const std::shared_ptr<expression>& arg)
+{
+	items.push_back(arg);
+}
+
+
+
+
+list_comp_expression::list_comp_expression (const std::shared_ptr<expression>& origin, const std::string& n)
+	: it_name(n), start(origin), filter(nullptr), map(nullptr)
+{ }
+bool list_comp_expression::eval (value& out, state::scope& scope)
+{
+	value list_val, item, filt_result;
+	
+	if (!start->eval(list_val, scope))
+		return false;
+	
+	if (list_val.type != value::type_list)
+	{
+		scope().error().die()
+			<< "Cannot process list comprehension on value of type '"
+			<< list_val.type_string() << "'";
+		return false;
+	}
+	
+	state::scope new_scope(scope.parent, // re-use this scope
+		std::shared_ptr<closure>(new closure(1, scope.local)));
+	
+	std::vector<value> output;
+	int size = list_val.list_obj->size();
+	for (int i = 0; i < size; i++)
+	{
+		item = list_val.list_obj->get(i);
+		new_scope.local->set(0, item); // set one argument, being the iterator
+		
+		if (filter != nullptr)
+		{
+			if (!filter->eval(filt_result, new_scope))
+				return false;
+			
+			if (!filt_result.condition())
+				continue; // do not insert
+		}
+		if (map != nullptr)
+			if (!map->eval(item, new_scope))
+				return false;
+		
+		output.push_back(item);
+	}
+	if (output.size() == 0)
+		out = value::from_list(list::empty());
+	else
+		out = value::from_list(std::shared_ptr<list>(new list_basic(output)));
+	return true;
+}
+bool list_comp_expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator)
+{
+	if (!start->locate_symbols(locator))
+		return false;
+	
+	locator->push_empty();
+	locator->add(it_name);
+	
+	if (filter != nullptr && !filter->locate_symbols(locator))
+			return false;
+	if (map != nullptr && !map->locate_symbols(locator))
+			return false;
+	
+	locator->pop();
+	return true;
+}
+bool list_comp_expression::constant () const { return false; }
+
+
+
 
 
 
@@ -237,8 +402,6 @@ private:
 	int closure_index, closure_depth;
 };
 
-state expression::constant_state;
-
 std::shared_ptr<expression> expression::create_const (const value& val)
 {
 	return std::shared_ptr<expression>(new const_exp(val));
@@ -256,10 +419,6 @@ std::shared_ptr<expression> expression::create_symbol (const std::string& sym)
 std::shared_ptr<expression> expression::create_closure_ref (int index, int depth)
 {
 	return std::shared_ptr<expression>(new symbol_exp(index, depth));
-}
-std::shared_ptr<expression> expression::create_true ()
-{
-	return std::shared_ptr<expression>(new const_exp(value::from_bool(true)));
 }
 std::shared_ptr<expression> expression::create_unary (const std::shared_ptr<expression>& a, int op)
 {

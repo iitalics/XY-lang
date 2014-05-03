@@ -35,6 +35,7 @@ private:
 	bool parse_function (std::shared_ptr<func_body>& out);
 	bool parse_list (std::shared_ptr<expression>& out);
 	bool parse_lambda (std::shared_ptr<expression>& out);
+	bool parse_list_comp (std::shared_ptr<expression>& out, const std::shared_ptr<expression>& list_exp);
 };
 
 

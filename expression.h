@@ -23,6 +23,8 @@ struct symbol_locator
 	std::ostream& die ();
 	bool locate (const std::string& sym, int& out_index, int& out_depth);
 	void push_param_list (const param_list& p);
+	void push_empty ();
+	void add (const std::string& name);
 	void pop ();
 };
 
@@ -45,10 +47,13 @@ public:
 	static std::shared_ptr<expression> create_unary (const std::shared_ptr<expression>& a, int op);
 	static std::shared_ptr<expression> create_symbol (const std::string& sym);
 	static std::shared_ptr<expression> create_closure_ref (int index, int depth = 0);
-	static std::shared_ptr<expression> create_true ();
-private:
-	static state constant_state;
 };
+
+
+class const_expr;
+class binary_expr;
+class unary_expr;
+class symbol_expr;
 
 
 
@@ -70,6 +75,37 @@ private:
 	std::vector<std::shared_ptr<expression>> args;
 };
 
+
+class list_expression : public expression
+{
+public:
+	list_expression ();
+	
+	virtual bool eval (value& out, state::scope& scope);
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
+	virtual bool constant () const;
+	void add (const std::shared_ptr<expression>& arg);
+	
+private:
+	std::vector<std::shared_ptr<expression>> items;
+};
+
+class list_comp_expression :
+	public expression
+{
+public:
+	list_comp_expression (const std::shared_ptr<expression>& origin, const std::string& it_name);
+	
+	virtual bool eval (value& out, state::scope& scope);
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
+	virtual bool constant () const;
+	
+	inline void set_filter (const std::shared_ptr<expression>& e) { filter = e; }
+	inline void set_map (const std::shared_ptr<expression>& e) { map = e; }
+//private:
+	std::string it_name;
+	std::shared_ptr<expression> start, filter, map;
+};
 
 
 };

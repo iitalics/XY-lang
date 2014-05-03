@@ -11,7 +11,7 @@ namespace xy {
 
 std::vector<std::string> lexer::token::keywords
 {
-	"let", "struct",
+	"let", "with",
 	
 	value::true_string(), value::false_string(),
 	
