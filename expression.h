@@ -35,8 +35,19 @@ class expression
 public:
 	// inline expression () {}
 	
+	struct tail_call
+	{
+		tail_call (function* f);
+		
+		function* func;
+		std::vector<value> args;
+		bool do_tail;
+	};
+	
 	virtual ~expression ();
 	virtual bool eval (value& out, state::scope& scope);
+	virtual bool eval_tail_call (tail_call& tc, value& out, state::scope& scope);
+	
 	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
 	virtual bool constant () const;
 	
@@ -65,8 +76,8 @@ public:
 	{ }
 	
 	virtual bool eval (value& out, state::scope& scope);
+	virtual bool eval_tail_call (tail_call& tc, value& out, state::scope& scope);
 	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
-	
 	
 	void add (const std::shared_ptr<expression>& arg);
 	
@@ -129,5 +140,9 @@ private:
 	std::shared_ptr<expression> body;
 };
 
+
+/*
+	
+*/
 
 };

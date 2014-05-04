@@ -8,7 +8,7 @@ namespace xy {
 
 class closure;
 class value;
-
+class function;
 
 class state
 {

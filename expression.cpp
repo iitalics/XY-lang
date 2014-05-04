@@ -10,16 +10,24 @@
 
 namespace xy {
 
-expression::~expression () { }
+expression::~expression () {}
 bool expression::eval (value& out, state::scope& scope)
 {
 	scope().error().die() << "Unimplemented expression?";
 	return false;
 }
+bool expression::eval_tail_call (tail_call& tc, value& out, state::scope& scope)
+{
+	tc.do_tail = false;
+	return eval(out, scope);
+}
 bool expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator) { return true; }
 bool expression::constant () const { return false; }
 
 
+expression::tail_call::tail_call (function* f)
+	: func(f), do_tail(false)
+{ }
 
 
 
@@ -77,7 +85,7 @@ void symbol_locator::pop ()
 
 
 
-bool call_expression::eval (value& out, state::scope& scope)
+bool call_expression::eval_tail_call (tail_call& tc, value& out, state::scope& scope)
 {
 	value func;
 	
@@ -90,7 +98,25 @@ bool call_expression::eval (value& out, state::scope& scope)
 		if (!e->eval(arg_list.values[i++], scope))
 			return false;
 	
+	if (tc.func != nullptr &&
+			func.type == value::type_function &&
+			func.func_obj.get() == tc.func)
+	{
+		tc.do_tail = true;
+		for (i = 0; i < arg_list.size; i++)
+			tc.args.push_back(arg_list.values[i]);
+		
+		return true;
+	}
+	else
+		tc.do_tail = false;
+	
 	return func.call(out, arg_list, scope());
+}
+bool call_expression::eval (value& out, state::scope& scope)
+{
+	tail_call tc(nullptr);
+	return eval_tail_call(tc, out, scope);
 }
 
 void call_expression::add (const std::shared_ptr<expression>& arg)

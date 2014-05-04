@@ -153,6 +153,8 @@ bool soft_function::call (value& out, const argument_list& args, state::scope& p
 	state::scope scope(parent(), std::shared_ptr<closure>(new closure(args, parent_closure)));
 	std::shared_ptr<expression> to_eval(nullptr);
 	
+tail_call_recur_point: // if tail call successful, goto here
+	
 #ifdef XY_REVERSE_OVERLOAD_ORDER
 	for (auto it = overloads.crbegin(); it != overloads.crend(); it++)
 #else
@@ -182,7 +184,27 @@ bool soft_function::call (value& out, const argument_list& args, state::scope& p
 		return false;
 	}
 	else
-		return to_eval->eval(out, scope);
+	{
+		expression::tail_call tc(this);
+		
+		if (!to_eval->eval_tail_call(tc, out, scope))
+			return false;
+		
+		if (tc.do_tail)
+		{
+			std::shared_ptr<closure> new_closure(new closure(tc.args.size(), parent_closure));
+			int i = 0;
+			for (auto& v : tc.args)
+				new_closure->set(i++, v);
+			
+			to_eval = nullptr;
+			scope.local = new_closure;
+			
+			goto tail_call_recur_point;
+		}
+		
+		return true;
+	}
 }
 
 
