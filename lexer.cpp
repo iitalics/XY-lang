@@ -11,7 +11,7 @@ namespace xy {
 
 std::vector<std::string> lexer::token::keywords
 {
-	"let", "with",
+	"let", "with", "use",
 	
 	value::true_string(), value::false_string(),
 	
@@ -137,6 +137,8 @@ bool lexer::expect (int tok, bool adv)
 			ss << token::number_string();
 		else if (tok == token::symbol_token)
 			ss << token::symbol_string();
+		else if (tok == token::string_token)
+			ss << token::string_string();
 		else
 			ss << token(tok).to_str();
 		
@@ -189,6 +191,8 @@ bool lexer::advance ()
 		return parse_num();
 	else if (is_sym_char(peek()))
 		return parse_sym();
+	else if (peek() == '"')
+		return parse_str();
 	
 	char chr = read();
 	current_token.tok = chr;
@@ -227,7 +231,7 @@ bool lexer::parse_digit (char c, int base, int& out)
 	return true;
 fail:
 	parent.error().die_lex(*this) 
-		<< "Unexpected token in number literal";
+		<< "Invalid digit";
 	return false;
 }
 
@@ -298,7 +302,52 @@ bool lexer::parse_sym ()
 	current_token.str = ss.str();
 	return true;
 }
-
+bool lexer::parse_str ()
+{
+	char c, quote = read();
+	std::ostringstream ss;
+	
+	while (peek() != quote)
+	{
+		c = read();
+		
+		if (c == '\\')
+			switch (c = read())
+			{
+			case 'x':
+			{
+				int a = 0, b = 0;
+				
+				if (!parse_digit(read(), 16, a) ||
+						!parse_digit(read(), 16, b))
+					return false;
+				
+				c = (char)((a * 16) | b);
+				break;
+			}
+			case 't': c = '\t'; break;
+			case 'n': c = '\n'; break;
+			case '0': c = '\0'; break;
+		//	case 'r': c = '\r'; break;
+			case '\\': case '\'': case '\"':
+				// c = c
+				break;
+			
+			default:
+				parent.error().die_lex(*this)
+					<< "Invalid escape sequence '" << c << "'";
+				return false;
+			}
+		
+		ss << c;
+	}
+	
+	current_token.tok = token::string_token;
+	current_token.str = ss.str();
+	
+	read(); // flush quote
+	return true;
+}
 
 
 
@@ -315,17 +364,20 @@ lexer::token::token (int tok_)
 
 std::string lexer::token::to_str () const
 {
+	std::ostringstream ss;
 	switch (tok)
 	{
 	case eof_token:
 		return eof_string();
 		
 	case number_token:
-		{
-			std::ostringstream ss;
-			ss << num;
-			return ss.str();
-		}
+		ss << num;
+		return ss.str();
+		
+	
+	case string_token:
+		return string_string();
+		
 	case symbol_token:
 		return str;
 	

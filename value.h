@@ -17,7 +17,8 @@ struct value
 		type_number,
 		type_bool,
 		type_function,
-		type_list
+		type_list,
+		type_string
 	};
 	enum comparison
 	{
@@ -40,9 +41,11 @@ struct value
 	};
 	std::shared_ptr<function> func_obj;
 	std::shared_ptr<list> list_obj;
+	std::string str;
 	
 	
 	bool condition () const;
+	int integer () const;
 	
 	bool apply_operator (value& out, int op, const value& other, state& parent);
 	bool apply_unary (value& out, int op, state& parent);
@@ -57,7 +60,7 @@ struct value
 	bool call (value& out, const argument_list& args, state& parent);
 	
 	std::string to_str () const;
-	std::string type_string () const;
+	std::string type_str () const;
 	
 	
 	
@@ -69,8 +72,9 @@ struct value
 	static value from_bool (bool b);
 	static value from_function (std::shared_ptr<function> f);
 	static value from_list (std::shared_ptr<list> l);
+	static value from_string (const std::string& str);
 	
-	static std::string type_string (value_type t);
+	static std::string type_str (value_type t);
 	static std::string true_string ();
 	static std::string false_string ();
 };

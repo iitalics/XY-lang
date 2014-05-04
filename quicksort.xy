@@ -1,0 +1,7 @@
+
+let quicksort ([]) = []
+let quicksort (a) =
+	with (p = a . 0, a = a .. 1)
+		quicksort(a $ t : t <= p) +
+		[ p ] +
+		quicksort(a $ t : t > p)

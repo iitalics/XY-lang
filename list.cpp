@@ -6,6 +6,8 @@
 namespace xy {
 
 
+#define XY_LIST_DUPLICATE_LENGTH 8
+
 std::shared_ptr<list> list::empty_list(new list());
 
 
@@ -31,13 +33,12 @@ bool list::equals (const std::shared_ptr<list>& other, state& eval_state)
 }
 std::shared_ptr<list> list::empty () { return empty_list; }
 
-
 std::shared_ptr<list> list::concat (const std::shared_ptr<list>& a, const std::shared_ptr<list>& b)
 {
 	int as = a->size();
 	int bs = b->size();
 	
-	if ((as + bs) <= 4)
+	if ((as + bs) <= XY_LIST_DUPLICATE_LENGTH)
 	{
 		std::vector<value> vs;
 		for (int i = 0; i < as; i++)
@@ -48,6 +49,20 @@ std::shared_ptr<list> list::concat (const std::shared_ptr<list>& a, const std::s
 	}
 	else
 		return std::shared_ptr<list>(new list_concat(a, b));
+}
+std::shared_ptr<list> list::sublist (const std::shared_ptr<list>& a, int index)
+{
+	int size = a->size() - index;
+	
+	if (size <= XY_LIST_DUPLICATE_LENGTH)
+	{
+		std::vector<value> vs;
+		for (int i = 0; i < size; i++)
+			vs.push_back(a->get(index + i));
+		return std::shared_ptr<list>(new list_basic(vs));
+	}
+	else
+		return std::shared_ptr<list>(new list_sublist(a, index));
 }
 
 /// list_basic

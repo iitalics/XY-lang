@@ -15,27 +15,28 @@ value::value (value_type t)
 value::value (const value& other)
 	: type(other.type)
 {
-	if (type == type_number)
-		num = other.num;
-	if (type == type_bool)
-		cond = other.cond;
-	if (type == type_function)
-		func_obj = other.func_obj;
-	if (type == type_list)
-		list_obj = other.list_obj;
+	switch (type)
+	{
+	case type_list:		list_obj = other.list_obj; break;
+	case type_bool:		cond = other.cond; break;
+	case type_string:	str = other.str; break;
+	case type_number: 	num = other.num; break;
+	case type_function:	func_obj = other.func_obj; break;
+	default: break;
+	}
 }
 
 value& value::operator=(const value& other)
 {
-	type = other.type;
-	if (type == type_number)
-		num = other.num;
-	if (type == type_bool)
-		cond = other.cond;
-	if (type == type_function)
-		func_obj = other.func_obj;
-	if (type == type_list)
-		list_obj = other.list_obj;
+	switch (type = other.type)
+	{
+	case type_list:		list_obj = other.list_obj; break;
+	case type_bool:		cond = other.cond; break;
+	case type_string:	str = other.str; break;
+	case type_number: 	num = other.num; break;
+	case type_function:	func_obj = other.func_obj; break;
+	default: break;
+	}
 	return *this;
 }
 
@@ -80,6 +81,10 @@ std::string value::to_str () const
 			ss << " ]";
 			return ss.str();
 		}
+	
+	case type_string:
+		return str;
+	
 	default:
 		return "??";
 	}
@@ -112,6 +117,12 @@ value value::from_list (std::shared_ptr<list> l)
 	v.list_obj = l;
 	return v;
 }
+value value::from_string (const std::string& str)
+{
+	value v(type_string);
+	v.str = str;
+	return v;
+}
 
 
 bool value::apply_operator (value& out, int op, const value& other, state& parent)
@@ -133,6 +144,17 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 			out = list_obj->get((int)(other.num));
 			return true;
 		}
+		if (type == type_string &&
+				other.type == type_number)
+		{
+			int index(other.num);
+			int size(str.size());
+			if (index < 0 || index >= size)
+				out = value::from_string(""); // error? return void?
+			else
+				out = value::from_string(str.substr(index, 1));
+			return true;
+		}
 		break;
 	
 	case lexer::token::seq_token:
@@ -140,7 +162,6 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 				other.type == type_number)
 		{
 			int index(other.num);
-			
 			if (index < 0)
 			{
 				parent.error().die() 
@@ -148,8 +169,25 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 				return false;
 			}
 			
-			out = value::from_list(std::shared_ptr<list>(
-						new list_sublist(list_obj, index)));
+			out = value::from_list(list::sublist(list_obj, index));
+			return true;
+		}
+		if (type == type_string &&
+				other.type == type_number)
+		{
+			int index(other.num);
+			int size(str.size());
+			if (index < 0)
+			{
+				parent.error().die() 
+					<< "Cannot access negative string index";
+				return false;
+			}
+			
+			if (index >= size)
+				out = value::from_string("");
+			else
+				out = value::from_string(str.substr(index));
 			return true;
 		}
 		break;
@@ -158,10 +196,18 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 		if (type == type_list &&
 				other.type == type_list)
 		{
-			out = value::from_list(std::shared_ptr<list>(
-					new list_concat(list_obj, other.list_obj)));
+			out = value::from_list(list::concat(list_obj, other.list_obj));
 			return true;
 		}
+		if (type == type_string)
+		{
+			std::ostringstream ss;
+			ss << str;
+			ss << other.to_str();
+			out = value::from_string(ss.str());
+			return true;
+		}
+		break;
 	
 	default: break;
 	}
@@ -220,7 +266,7 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 bad_input:
 	parent.error().die()
 		<< "Cannot apply operator '" << lexer::token(op).to_str()
-		<< "' to values of type '" << type_string() << "' and '" << other.type_string() << "'";
+		<< "' to values of type '" << type_str() << "' and '" << other.type_str() << "'";
 	return false;
 }
 
@@ -246,7 +292,7 @@ bool value::apply_unary (value& out, int op, state& parent)
 bad_input:
 	parent.error().die()
 		<< "Cannot apply unary operator '" << lexer::token(op).to_str() 
-		<< "' to value of type '" << type_string() << "'";
+		<< "' to value of type '" << type_str() << "'";
 	return false;
 }
 
@@ -317,11 +363,11 @@ bool value::condition () const
 
 
 
-std::string value::type_string () const
+std::string value::type_str () const
 {
-	return type_string(type);
+	return type_str(type);
 }
-std::string value::type_string (value_type t)
+std::string value::type_str (value_type t)
 {
 	switch (t)
 	{

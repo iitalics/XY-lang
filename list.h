@@ -21,6 +21,7 @@ public:
 	
 	static std::shared_ptr<list> empty ();
 	static std::shared_ptr<list> concat (const std::shared_ptr<list>& a, const std::shared_ptr<list>& b);
+	static std::shared_ptr<list> sublist (const std::shared_ptr<list>& a, int index);
 	
 private:
 	static std::shared_ptr<list> empty_list;

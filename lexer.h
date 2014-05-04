@@ -38,7 +38,7 @@ public:
 			
 			keyword__start = 2000,
 			keyword_let = keyword__start,
-			keyword_with,
+			keyword_with, keyword_use, 
 			keyword_true, keyword_false,
 			keyword_or, keyword_and
 		};
@@ -75,6 +75,7 @@ public:
 		static inline std::string eof_string () { return "<eof>"; }
 		static inline std::string number_string () { return "<number>"; }
 		static inline std::string symbol_string () { return "<symbol>"; }
+		static inline std::string string_string () { return "<string>"; }
 	};
 	
 	
@@ -107,6 +108,7 @@ private:
 	bool parse_digit (char c, int base, int& out);
 	bool parse_num ();
 	bool parse_sym ();
+	bool parse_str ();
 };
 
 

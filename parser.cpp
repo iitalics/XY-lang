@@ -71,7 +71,23 @@ bool parser::parse_env (environment& env)
 			if (!parse_declare(env, g))
 				return false;
 		}
-		// else if ( OTHER TOKEN )
+		else if (lex.current().tok == lexer::token::keyword_use)
+		{
+			if (!lex.advance())
+				return false;
+			if (!lex.expect(lexer::token::string_token))
+				return false;
+			std::string fname(lex.current().str);
+			if (!lex.advance())
+				return false;
+			
+			lexer sublex(parent);
+			if (!sublex.open(fname))
+				return false;
+			parser subparser(parent, sublex);
+			if (!subparser.parse_env(env))
+				return false;
+		}
 		else
 			break;
 	}
@@ -240,6 +256,10 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 	{
 	case lexer::token::number_token:
 		out = expression::create_const(value::from_number(lex.current().num));
+		break;
+		
+	case lexer::token::string_token:
+		out = expression::create_const(value::from_string(lex.current().str));
 		break;
 		
 	case lexer::token::symbol_token:

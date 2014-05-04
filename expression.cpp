@@ -195,7 +195,7 @@ bool list_comp_expression::eval (value& out, state::scope& scope)
 	{
 		scope().error().die()
 			<< "Cannot process list comprehension on value of type '"
-			<< list_val.type_string() << "'";
+			<< list_val.type_str() << "'";
 		return false;
 	}
 	
