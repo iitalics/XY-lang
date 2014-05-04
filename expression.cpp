@@ -257,7 +257,7 @@ bool list_comp_expression::constant () const { return false; }
 
 
 
-bool with_expression::eval (value& out, state::scope& parent_scope)
+bool with_expression::eval_tail_call (tail_call& tc, value& out, state::scope& parent_scope)
 {
 	state::scope scope(parent_scope(),
 		std::shared_ptr<closure>(new closure(vars.size(), parent_scope.local)));
@@ -272,7 +272,12 @@ bool with_expression::eval (value& out, state::scope& parent_scope)
 		scope.local->set(i++, item);
 	}
 	
-	return body->eval(out, scope);
+	return body->eval_tail_call(tc, out, scope);
+}
+bool with_expression::eval (value& out, state::scope& scope)
+{
+	tail_call tc(nullptr);
+	return eval_tail_call(tc, out, scope);
 }
 bool with_expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 {

@@ -123,6 +123,7 @@ class with_expression :
 {
 public:
 	virtual bool eval (value& out, state::scope& scope);
+	virtual bool eval_tail_call (tail_call& tc, value& out, state::scope& scope);
 	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
 	virtual bool constant () const;
 	
