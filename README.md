@@ -5,7 +5,7 @@ Syntax Overview (WIP)
 Comments:
 -------------------------------
     ; this is a comment
-      
+
 Numbers
 -------------------------------
     1 + 2        ; = 3
@@ -14,7 +14,7 @@ Numbers
     (5 - 1) * 3  ; = 12
     5 - 1 * 3    ; = 2
     300 * 0.25   ; = 75
-    
+
 Booleans
 -------------------------------
     true             ; = true
@@ -42,14 +42,14 @@ Functions
 Simple function declaration and calling:
 
     let twice (x) = x * 2
-    
+
     let main () = twice(4.5)
-    
+
 Overloading with constants:
 
     let foo (0) = 12
     let foo (n) = n + 1
-    
+
     let main () = foo(3) + foo(0)  ; = 12 + 3 + 1 = 16
 
 Overloading with conditions:
@@ -57,7 +57,7 @@ Overloading with conditions:
     let sign (n : n < 0) = -1
     let sign (n > 0) = 1  ; equiv. to 'let sign (n : n > 0) = 1'
     let sign (0) = 0
-    
+
     let main () = sign(-32)   ; = -1
 
 Other parameters may be used in the conditions of a parameter
@@ -72,7 +72,6 @@ Other parameters may be used in the conditions of a parameter
 
 Planned, unimplented features:
 
-    let f () = f() ; tail-call optimization
     (x -> y)       ; equiv. to 'y(x)'
 
 'With' Aliasing
@@ -95,19 +94,19 @@ Lambdas
 Syntax:
 
     @(args) = body
-    
+
     @{ let (args1) = body1
        let (args2) = body2
        let (args3) = ... }
-    
+
 Example:
 
-    let main () = 
+    let main () =
         filter(@(x) = x < 3,
             [ -1, -2, 3, 4, 0, 2, -3, 1, 5 ])  ; = [ -1, -2, 0, 2, -3, 1 ]
 
 Planned, unimplented features:
-    
+
     #(3 + 2)  ; equiv. to '(@() = 3 + 2)'
     (' * 2)   ; equiv. to '(@(x) = x * 2)'
     (&<=)     ; equiv. to '(@(x, y) = x <= y)'
@@ -120,12 +119,12 @@ Syntax:
     list $ iterator : filter_expression = map_expression
     ; filter is applied first, followed by map.
     ; either are optional, but you must supply atleast one
-    
+
 Examples:
-    
+
     let threshold (a, min) = ; list of each value in 'a' not less than 'min'
         a $ t : t >= min
-    
+
     let double_all (a) =     ; list of the values of a, doubled
         a $ t = t * 2
 
@@ -135,6 +134,6 @@ Globals
 Unimplemented.  Planned syntax:
 
     let PI = 3.1415926535
-    
+
     let area (r) =
         PI * r ^ 2
