@@ -4,14 +4,20 @@
 #include "function.h"
 #include "value.h"
 
-int main ()
+int main (int argc, char** argv)
 {
 	xy::state xy;
 	
+	if (argc <= 1)
+	{
+		std::cerr << "Usage: xy FILE1, FILE2..." << std::endl;
+		return 0;
+	}
 	
-	if (!xy.load("test.xy"))
-		xy.error().dump();
-	else
+	for (int i = 1; i < argc; i++)
+		if (!xy.load(std::string(argv[i])))
+			goto fail;
+	
 	{
 		auto main_func = xy.global().find_function("main");
 		if (main_func != nullptr)
@@ -24,7 +30,7 @@ int main ()
 				};
 			
 			if (!main_func->call(output, args, scope))
-				xy.error().dump();
+				goto fail;
 			else
 			{
 				std::cout << "main =\n   " << output.to_str() << std::endl;
@@ -35,4 +41,8 @@ int main ()
 	}
 	
 	return 0;
+	
+fail:
+	xy.error().dump();
+	return -1;
 }
