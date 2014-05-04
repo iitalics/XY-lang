@@ -68,12 +68,26 @@ Other parameters may be used in the conditions of a parameter
         filter(f, a .. 1)
     let filter (f, a) =
         filter (f, a .. 1)
-	; see 'list comprehension' for built-in list filtering
+    ; see 'list comprehension' for built-in list filtering
 
 Planned, unimplented features:
 
-	let f () = f() ; tail-call optimization
+    let f () = f() ; tail-call optimization
     (x -> y)       ; equiv. to 'y(x)'
+
+'With' Aliasing
+-------------------------------
+
+Syntax:
+
+    with (var1 = value1, var2 = value2... )
+        expression
+
+Example:
+
+    let area (diameter) =
+        with (radius = diameter / 2, pi = 3.1415926535)
+            pi * radius ^ 2
 
 Lambdas
 -------------------------------
@@ -120,7 +134,7 @@ Globals
 
 Unimplemented.  Planned syntax:
 
-	let PI = 3.1415926535
-	
-	let area (r) =
-		PI * r ^ 2
+    let PI = 3.1415926535
+    
+    let area (r) =
+        PI * r ^ 2

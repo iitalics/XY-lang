@@ -102,9 +102,31 @@ public:
 	
 	inline void set_filter (const std::shared_ptr<expression>& e) { filter = e; }
 	inline void set_map (const std::shared_ptr<expression>& e) { map = e; }
-//private:
+private:
 	std::string it_name;
 	std::shared_ptr<expression> start, filter, map;
+};
+
+class with_expression :
+	public expression
+{
+public:
+	virtual bool eval (value& out, state::scope& scope);
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
+	virtual bool constant () const;
+	
+	bool add (const std::string& name, const std::shared_ptr<expression>& val);
+	inline void set_body (const std::shared_ptr<expression>& e) { body = e; }
+	inline bool empty () const { return vars.size() == 0; }
+private:
+	struct var
+	{
+		std::string name;
+		std::shared_ptr<expression> val;
+	};
+	
+	std::vector<var> vars;
+	std::shared_ptr<expression> body;
 };
 
 

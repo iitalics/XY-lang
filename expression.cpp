@@ -229,6 +229,62 @@ bool list_comp_expression::constant () const { return false; }
 
 
 
+
+
+bool with_expression::eval (value& out, state::scope& parent_scope)
+{
+	state::scope scope(parent_scope(),
+		std::shared_ptr<closure>(new closure(vars.size(), parent_scope.local)));
+	value item;
+	
+	int i = 0;
+	for (auto& v : vars)
+	{
+		if (!v.val->eval(item, scope))
+			return false;
+		
+		scope.local->set(i++, item);
+	}
+	
+	return body->eval(out, scope);
+}
+bool with_expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator)
+{
+	locator->push_empty();
+	for (auto& v : vars)
+	{
+		if (!v.val->locate_symbols(locator))
+			return false;
+		
+		locator->add(v.name);
+	}
+	
+	if (!body->locate_symbols(locator))
+		return false;
+	
+	locator->pop();
+	return true;
+}
+bool with_expression::constant () const { return false; }
+
+bool with_expression::add (const std::string& name, const std::shared_ptr<expression>& val)
+{
+	for (auto& v : vars)
+		if (v.name == name)
+			return false;
+	
+	vars.push_back({ name, val });
+	return true;
+}
+
+
+
+
+
+
+
+
+
 	
 	
 class const_exp : public expression

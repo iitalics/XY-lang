@@ -253,7 +253,12 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 	case lexer::token::keyword_false:
 		out = expression::create_const(value::from_bool(false));
 		break;
-		
+	
+	case lexer::token::keyword_with:
+		if (!parse_with(out))
+			return false;
+		goto prologue;
+	
 	case SYNTAX_LAMBDA:
 		if (!parse_lambda(out))
 			return false;
@@ -634,7 +639,65 @@ bool parser::parse_list_comp (std::shared_ptr<expression>& out, const std::share
 
 
 
-
+bool parser::parse_with (std::shared_ptr<expression>& out)
+{
+	if (!lex.expect(lexer::token::keyword_with, true))
+		return false;
+	if (!lex.expect(SYNTAX_WITH_L, true))
+		return false;
+	
+	std::shared_ptr<with_expression> w(new with_expression());
+	std::shared_ptr<expression> e;
+	
+	while (lex.current().tok != SYNTAX_WITH_R)
+	{
+		if (!lex.expect(lexer::token::symbol_token))
+			return false;
+		std::string name(lex.current().str);
+		if (!lex.advance())
+			return false;
+		if (!lex.expect(SYNTAX_WITH_ASSIGN, true))
+			return false;
+		if (!parse_exp(e))
+			return false;
+		
+		if (!w->add(name, e))
+		{
+			parent.error().die_lex(lex)
+				<< "Alias '" << name << "' already declared";
+			return false;
+		}
+		
+		if (lex.current().tok == SYNTAX_WITH_SEP)
+		{
+			if (!lex.advance())
+				return false;
+		}
+		else if (lex.current().tok != SYNTAX_WITH_R)
+		{
+			parent.error().die_lex(lex)
+				<< "Expected '" << SYNTAX_WITH_R << "' or '" << SYNTAX_WITH_R
+				<< "', got '" << lex.current().to_str() << "'";
+			return false;
+		}
+	}
+	
+	if (w->empty())
+	{
+		parent.error().die_lex(lex)
+			<< "Invalid 'with' expression without any declared aliases";
+		return false;
+	}
+	
+	if (!lex.advance())
+		return false;
+	if (!parse_exp(e))
+		return false;
+	
+	w->set_body(e);
+	out = w;
+	return true;
+}
 
 
 };

@@ -3,11 +3,10 @@
 let quicksort ([]) = []
 
 let quicksort (a) =
-	quicksort(a .. 1 $ t : t <= a . 0) +
-	[ a . 0 ] +
-	quicksort(a .. 1 $ t : t > a . 0)
-;
-
+	with (p = a . 0, a = a .. 1)
+		quicksort(a $ t : t <= p) +
+		[ p ] +
+		quicksort(a $ t : t > p)
 
 let main () =
-	quicksort([ 8, 3, 1, 6, 5, 2, 10 ])
+	quicksort([ 4, 2, 9, 1, 3, 10, 12 ])
