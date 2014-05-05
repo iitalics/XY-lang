@@ -42,7 +42,7 @@ void state::import_native_functions (environment& e)
 		value z(args.get(1));
 		value it(args.get(2));
 		
-		for (int i, size = it.list_size(); i < size; i++)
+		for (int i = 0, size = it.list_size(); i < size; i++)
 		{
 			value x(it.list_get(i));
 			
