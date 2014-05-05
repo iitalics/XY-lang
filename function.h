@@ -1,12 +1,13 @@
 #pragma once
 #include "parser.h"
 #include "state.h"
+#include "value.h"
 
 #include <initializer_list>
 
 namespace xy {
 
-class value;
+
 class param_list;
 class expression;
 
@@ -17,6 +18,10 @@ struct argument_list
 	argument_list (const argument_list& other);
 	argument_list (std::initializer_list<value> values);
 	~argument_list ();
+	
+	value get (int i) const;
+	bool check (const std::string& fname, state& s,
+			const std::initializer_list<value::value_type>& types, bool err = true) const;
 	
 	int size;
 	value* values;
@@ -34,6 +39,7 @@ public:
 	inline bool is_lambda () const { return func_name.size() == 0; }
 	
 	virtual bool call (value& out, const argument_list& args, state::scope& scope);
+	bool call (value& out, const argument_list& args, state& s);
 protected:
 	std::string func_name;
 	bool native;
@@ -106,6 +112,23 @@ public:
 private:
 	std::vector<std::shared_ptr<func_body>> overloads;
 	std::shared_ptr<closure> parent_closure;
+};
+
+
+
+class native_function : public function
+{
+public:
+	typedef std::function<bool(value&, const argument_list&, state& parent)> handler;
+
+	template <typename T>
+	native_function (const std::string& n, const T& h)
+		: function(n, true), handle(h)
+	{ }
+	
+	virtual bool call (value& out, const argument_list& args, state::scope& scope);
+private:
+	handler handle;
 };
 
 

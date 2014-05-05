@@ -16,6 +16,7 @@ namespace xy {
 state::state ()
 	: global_env(*this)
 {
+	import_native_functions(global_env);
 }
 
 
@@ -87,5 +88,11 @@ int closure::size () const
 {
 	return closure_size;
 }
+
+
+
+
+
+
 
 };

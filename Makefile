@@ -9,7 +9,7 @@ OUTPUT=xy
 SOURCES=		main.cpp state.cpp lexer.cpp        \
 				error.cpp list.cpp environment.cpp  \
 				parser.cpp value.cpp function.cpp   \
-				expression.cpp
+				expression.cpp native_functions.cpp
 
 
 OBJECTS=$(SOURCES:%.cpp=obj/%.o)

@@ -1,5 +1,6 @@
-use "quicksort.xy"
 
+let fact (n) =
+	foldl(&*, 1, 1 .. n) ; foldl() built in
 
 let main () =
-	quicksort([ 1, 5, 2, 12, 15, 9, 32, 4, 2, 9, 3 ])
+	fact(5)

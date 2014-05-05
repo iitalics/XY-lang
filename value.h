@@ -18,7 +18,13 @@ struct value
 		type_bool,
 		type_function,
 		type_list,
-		type_string
+		type_string,
+		
+		// ambiguous types
+		type_int,
+		type_iterable,
+		type_any,
+		type_orderable
 	};
 	enum comparison
 	{
@@ -58,7 +64,10 @@ struct value
 	
 	
 	bool call (value& out, const argument_list& args, state& parent);
+	int list_size ();
+	value list_get (int i);
 	
+	bool is_type (value_type t) const;
 	std::string to_str () const;
 	std::string type_str () const;
 	

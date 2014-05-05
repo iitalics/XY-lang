@@ -101,9 +101,6 @@ bool parser::parse_declare (environment& env, function_generator& g)
 {
 	if (!lex.expect(lexer::token::keyword_let, true))
 		return false;
-	
-	std::shared_ptr<soft_function> soft_func;
-	
 	if (!lex.expect(lexer::token::symbol_token, false))
 		return false;
 		
@@ -112,25 +109,15 @@ bool parser::parse_declare (environment& env, function_generator& g)
 	if (!lex.advance())
 		return false;
 	
-	// find function
-	std::shared_ptr<function> hard_func =
-		env.find_function(func_name);
+	std::shared_ptr<soft_function> soft_func =
+		env.find_or_add(func_name);
 	
-	if (hard_func == nullptr)
-	{
-		// create new function
-		soft_func = std::shared_ptr<soft_function>(
-						new soft_function(func_name));
-		env.add_function(soft_func);
-	}
-	else if (hard_func->is_native())
+	if (soft_func == nullptr)
 	{
 		parent.error().die_lex(lex)
-			<< "Cannot overload native function '" << func_name << "'";
+			<< "Cannot overload function '" << func_name << "'";
 		return false;
 	}
-	else
-		soft_func = std::static_pointer_cast<soft_function>(hard_func); // UGLY :/
 	
 	
 	std::shared_ptr<func_body> body;
@@ -305,6 +292,33 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 		if (!parse_list(out))
 			return false;
 		goto prologue;
+	
+	case SYNTAX_MINI_LAMBDA_BIN:
+		if (!lex.advance())
+			return false;
+		//std::cout << "binary mini-lambda: " << lex.current().to_str() << std::endl;
+		if (!lex.current().is_binary_op())
+		{
+			parent.error().die_lex(lex)
+				<< "Expected binary operator, got '" << lex.current().to_str() << "'";
+			return false;
+		}
+		{
+			std::shared_ptr<expression> left = expression::create_closure_ref(0);
+			std::shared_ptr<expression> right = expression::create_closure_ref(1);
+			std::shared_ptr<expression> body = expression::create_binary(left, right, lex.current().tok);
+			
+			std::shared_ptr<soft_function> func(new soft_function(""));
+			std::shared_ptr<func_body> fb(new func_body());
+			
+			//fb->params.add_param(std::shared_ptr<expression>(nullptr));
+			//fb->params.add_param(std::shared_ptr<expression>(nullptr));
+			fb->body = body;
+			func->add_overload(fb);
+			
+			out = expression::create_const(value::from_function(func));
+			break;
+		}
 	
 	default:
 		if (lex.current().is_unary_op())

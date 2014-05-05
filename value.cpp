@@ -76,8 +76,14 @@ std::string value::to_str () const
 			int i, size = list_obj->size();
 			ss << "[";
 			for (i = 0; i < size; i++)
-				ss << ((i == 0) ? " " : ", ")
-				   << list_obj->get(i).to_str();
+			{
+				value v(list_obj->get(i));
+				std::string s(v.to_str());
+				if (v.is_type(type_string))
+					s = "\"" + s + "\"";
+				
+				ss << ((i == 0) ? " " : ", ") << s;
+			}
 			ss << " ]";
 			return ss.str();
 		}
@@ -136,30 +142,18 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 	case lexer::token::neq_token:
 		out = from_bool(!(compare(other, parent) & compare_none));
 		return true;
-	
+		
 	case '.':
-		if (type == type_list &&
-				other.type == type_number)
+		if (is_type(type_iterable) && other.is_type(type_int))
 		{
-			out = list_obj->get((int)(other.num));
-			return true;
-		}
-		if (type == type_string &&
-				other.type == type_number)
-		{
-			int index(other.num);
-			int size(str.size());
-			if (index < 0 || index >= size)
-				out = value::from_string(""); // error? return void?
-			else
-				out = value::from_string(str.substr(index, 1));
+			out = list_get((int)(other.num));
 			return true;
 		}
 		break;
 	
 	case lexer::token::seq_token:
-		if (type == type_list &&
-				other.type == type_number)
+		if (is_type(type_list) &&
+				other.is_type(type_int))
 		{
 			int index(other.num);
 			if (index < 0)
@@ -172,8 +166,8 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 			out = value::from_list(list::sublist(list_obj, index));
 			return true;
 		}
-		if (type == type_string &&
-				other.type == type_number)
+		if (is_type(type_string) &&
+				other.is_type(type_int))
 		{
 			int index(other.num);
 			int size(str.size());
@@ -190,16 +184,25 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 				out = value::from_string(str.substr(index));
 			return true;
 		}
+		if (is_type(type_int) && other.is_type(type_int))
+		{
+			int start(num);
+			int end(other.num);
+			std::vector<value> vs;
+			for (int i = start; i <= end; i++)
+				vs.push_back(value::from_number(i));
+			out = value::from_list(std::shared_ptr<list>(new list_basic(vs)));
+			return true;
+		}
 		break;
 	
 	case '+':
-		if (type == type_list &&
-				other.type == type_list)
+		if (is_type(type_list) && other.is_type(type_list))
 		{
 			out = value::from_list(list::concat(list_obj, other.list_obj));
 			return true;
 		}
-		if (type == type_string)
+		if (is_type(type_string))
 		{
 			std::ostringstream ss;
 			ss << str;
@@ -212,8 +215,31 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 	default: break;
 	}
 	
-	if (type != type_number ||
-			other.type != type_number)
+	
+	if (type == other.type &&
+			is_type(type_orderable))
+		switch (op)
+		{
+			case '>':
+				out = from_bool(compare(other, parent) & compare_greater);
+				break;
+				
+			case '<':
+				out = from_bool(!(compare(other, parent) & (compare_greater | compare_equal)));
+				break;
+				
+			case lexer::token::gre_token: // '>='
+				out = from_bool(compare(other, parent) & (compare_greater | compare_equal));
+				break;
+			
+			case lexer::token::lse_token: // '<='
+				out = from_bool(!(compare(other, parent) & compare_greater));
+				break;
+			
+			default: break;
+		}
+	
+	if (!(is_type(type_number) && other.is_type(type_number)))
 		goto bad_input;
 	
 	out.type = type_number;
@@ -240,22 +266,6 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 	case '^':
 		out.num = pow(num, other.num);
 		break;
-		
-	case '>':
-		out = from_bool(compare(other, parent) & compare_greater);
-		break;
-		
-	case '<':
-		out = from_bool(!(compare(other, parent) & (compare_greater | compare_equal)));
-		break;
-		
-	case lexer::token::gre_token: // '>='
-		out = from_bool(compare(other, parent) & (compare_greater | compare_equal));
-		break;
-	
-	case lexer::token::lse_token: // '<='
-		out = from_bool(!(compare(other, parent) & compare_greater));
-		break;
 	
 	default:
 		goto bad_input;
@@ -276,7 +286,7 @@ bool value::apply_unary (value& out, int op, state& parent)
 	switch (op)
 	{
 	case '-':
-		if (type != type_number)
+		if (!is_type(type_number))
 			goto bad_input;
 		out.num = -num;
 		out.type = type_number;
@@ -319,6 +329,9 @@ value::comparison value::compare (const value& other, state& parent)
 	case type_list:
 		return list_obj->equals(other.list_obj, parent) ? compare_equal : compare_none;
 		
+	case type_string:
+		return (str == other.str) ? compare_equal : compare_none;
+		
 	default:
 		return compare_none;
 	};
@@ -327,9 +340,12 @@ value::comparison value::compare (const value& other, state& parent)
 
 bool value::call (value& out, const argument_list& args, state& parent)
 {
-	if (type == type_number && args.size == 1)
+	if (args.size == 1)
 	{
-		return apply_operator(out, '*', args.values[0], parent);
+		if (is_type(type_number) && args.size == 1)
+		{
+			return apply_operator(out, '*', args.values[0], parent);
+		}
 	}
 	if (type != type_function)
 	{
@@ -342,6 +358,24 @@ bool value::call (value& out, const argument_list& args, state& parent)
 	return func_obj->call(out, args, scope);
 }
 
+value value::list_get (int i)
+{
+	if (type == type_list)
+		return list_obj->get(i);
+	else if (type == type_string)
+		return value::from_string(str.substr(i, 1));
+	else
+		return value();
+}
+int value::list_size ()
+{
+	if (type == type_list)
+		return list_obj->size();
+	else if (type == type_string)
+		return (int)(str.size());
+	else
+		return 0;
+}
 
 bool value::condition () const
 {
@@ -358,14 +392,33 @@ bool value::condition () const
 	}
 }
 
-
+bool value::is_type (value_type t) const
+{
+	if (t == type_any)
+		return true;
+	
+	if (t == type_int)
+		return type == type_number &&
+			(num == (int)num);
+	
+	if (t == type_iterable)
+		return type == type_list || type == type_string;
+	
+	if (t == type_orderable)
+		return type == type_number || type == type_string;
+	
+	return type == t;
+}
 
 
 
 
 std::string value::type_str () const
 {
-	return type_str(type);
+	if (is_type(type_int))
+		return type_str(type_int);
+	else
+		return type_str(type);
 }
 std::string value::type_str (value_type t)
 {
@@ -377,6 +430,11 @@ std::string value::type_str (value_type t)
 	case type_bool: return "boolean";
 	case type_list: return "list";
 	case type_function: return "function";
+	
+	case type_int: return "integer";
+	case type_iterable: return "iterable";
+	case type_orderable: return "orderable";
+	case type_any: return "any";
 	default: return "??";
 	}
 }

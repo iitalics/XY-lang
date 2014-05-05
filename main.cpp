@@ -6,13 +6,14 @@
 
 int main (int argc, char** argv)
 {
-	xy::state xy;
-	
 	if (argc <= 1)
 	{
 		std::cerr << "Usage: xy FILE1, FILE2..." << std::endl;
 		return 0;
 	}
+	
+	
+	xy::state xy;
 	
 	for (int i = 1; i < argc; i++)
 		if (!xy.load(std::string(argv[i])))

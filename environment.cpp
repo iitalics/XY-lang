@@ -27,5 +27,21 @@ void environment::add_function (const std::shared_ptr<function>& func)
 }
 
 
+std::shared_ptr<soft_function> environment::find_or_add (const std::string& name)
+{
+	auto func(find_function(name));
+	
+	if (func == nullptr)
+	{
+		std::shared_ptr<soft_function> soft_func(new soft_function(name));
+		add_function(soft_func);
+		return soft_func;
+	}
+	else if (!func->is_native())
+		return std::static_pointer_cast<soft_function>(func);
+	else
+		return nullptr;
+}
+
 
 };

@@ -40,6 +40,8 @@ public:
 private:
 	error_handler err_handler;
 	environment global_env;
+	
+	void import_native_functions (environment& env);
 };
 
 

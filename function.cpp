@@ -23,7 +23,17 @@ bool function::call (value& out, const argument_list& args, state::scope& scope)
 	out.type = value::type_void;
 	return true;
 }
+bool function::call (value& out, const argument_list& args, state& s)
+{
+	state::scope scope(s);
+	return call(out, args, scope);
+}
 
+
+bool native_function::call (value& out, const argument_list& args, state::scope& scope)
+{
+	return handle(out, args, scope());
+}
 
 
 
@@ -51,7 +61,39 @@ argument_list::~argument_list ()
 	delete[] values;
 }
 
+value argument_list::get (int i) const
+{
+	if (i < 0 || i >= size)
+		return value();
+	else
+		return values[i];
+}
 
+
+bool argument_list::check (const std::string& fname, state& s,
+				const std::initializer_list<value::value_type>& types, bool err) const
+{
+	if (size != (int)(types.size()))
+	{
+		if (err)
+			s.error().die()
+				<< "Invalid number of arguments supplied to '" << fname
+				<< "', expected " << types.size();
+		return false;
+	}
+	int i = 0;
+	for (auto t : types)
+		if (!values[i++].is_type(t))
+		{
+			if (err)
+				s.error().die()
+					<< "Invalid argument #" << i << " to '" << fname
+					<< "', expected " << value::type_str(t);
+			return false;
+		}
+	
+	return true;
+}
 
 
 
