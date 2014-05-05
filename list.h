@@ -25,6 +25,9 @@ public:
 	
 private:
 	static std::shared_ptr<list> empty_list;
+	
+protected:
+	bool is_sublist;
 };
 
 
@@ -52,7 +55,7 @@ public:
 	
 	virtual int size ();
 	virtual value get (int i);
-private:
+	
 	int start, end;
 	std::shared_ptr<list> a;
 };

@@ -118,27 +118,38 @@ private:
 	std::shared_ptr<expression> start, filter, map;
 };
 
+
+
 class with_expression :
 	public expression
 {
 public:
+	with_expression ();
+	
 	virtual bool eval (value& out, state::scope& scope);
 	virtual bool eval_tail_call (tail_call& tc, value& out, state::scope& scope);
 	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
 	virtual bool constant () const;
 	
 	bool add (const std::string& name, const std::shared_ptr<expression>& val);
+	bool add_list (const std::vector<std::string>& names, const std::shared_ptr<expression>& val, bool va);
+	
 	inline void set_body (const std::shared_ptr<expression>& e) { body = e; }
 	inline bool empty () const { return vars.size() == 0; }
 private:
 	struct var
 	{
-		std::string name;
+		std::vector<std::string> names;
 		std::shared_ptr<expression> val;
+		bool variadic;
+		
+		inline bool is_list () const { return names.size() > 0; }
+		inline std::string name () const { return names[0]; }
 	};
 	
 	std::vector<var> vars;
 	std::shared_ptr<expression> body;
+	int closure_size;
 };
 
 

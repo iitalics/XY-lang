@@ -685,21 +685,72 @@ bool parser::parse_with (std::shared_ptr<expression>& out)
 	
 	while (lex.current().tok != SYNTAX_WITH_R)
 	{
-		if (!lex.expect(lexer::token::symbol_token))
-			return false;
-		std::string name(lex.current().str);
-		if (!lex.advance())
-			return false;
-		if (!lex.expect(SYNTAX_WITH_ASSIGN, true))
-			return false;
-		if (!parse_exp(e))
-			return false;
-		
-		if (!w->add(name, e))
+		if (lex.current().tok == lexer::token::symbol_token)
 		{
-			parent.error().die_lex(lex)
-				<< "Alias '" << name << "' already declared";
-			return false;
+			std::string name(lex.current().str);
+			if (!lex.advance())
+				return false;
+			if (!lex.expect(SYNTAX_WITH_ASSIGN, true))
+				return false;
+			if (!parse_exp(e))
+				return false;
+				
+			if (!w->add(name, e))
+			{
+				parent.error().die_lex(lex)
+					<< "Duplicate declaration of alias '" << name << "'";
+				return false;
+			}
+		}
+		else if (lex.current().tok == SYNTAX_LIST_L)
+		{
+			if (!lex.advance())
+				return false;
+			
+			std::vector<std::string> names;
+			bool var = false;
+			
+			while (lex.current().tok != SYNTAX_LIST_R)
+			{
+				if (!lex.expect(lexer::token::symbol_token))
+					return false;
+				names.push_back(lex.current().str);
+				if (!lex.advance())
+					return false;
+				
+				if (lex.current().tok == SYNTAX_LIST_SEP)
+				{
+					if (!lex.advance())
+						return false;
+					continue;
+				}
+				if (lex.current().tok == lexer::token::seq_token)
+				{
+					if (!lex.advance())
+						return false;
+					var = true;
+				}
+				if (lex.current().tok != SYNTAX_LIST_R)
+				{
+					parent.error().die_lex(lex)
+						<< "Expected '" << SYNTAX_LIST_SEP << "' or '" << SYNTAX_WITH_R
+						<< "', got '" << lex.current().to_str() << "'";
+					return false;
+				}
+			}
+			if (!lex.advance())
+				return false;
+			if (!lex.expect(SYNTAX_WITH_ASSIGN, true))
+				return false;
+			if (!parse_exp(e))
+				return false;
+				
+			if (!w->add_list(names, e, var))
+			{
+				parent.error().die_lex(lex)
+					<< "Duplicate declaration of alias in list";
+				return false;
+			}
 		}
 		
 		if (lex.current().tok == SYNTAX_WITH_SEP)
@@ -710,7 +761,7 @@ bool parser::parse_with (std::shared_ptr<expression>& out)
 		else if (lex.current().tok != SYNTAX_WITH_R)
 		{
 			parent.error().die_lex(lex)
-				<< "Expected '" << SYNTAX_WITH_R << "' or '" << SYNTAX_WITH_R
+				<< "Expected '" << SYNTAX_WITH_SEP << "' or '" << SYNTAX_WITH_R
 				<< "', got '" << lex.current().to_str() << "'";
 			return false;
 		}

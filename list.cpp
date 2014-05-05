@@ -11,7 +11,7 @@ namespace xy {
 std::shared_ptr<list> list::empty_list(new list());
 
 
-list::list () {}
+list::list () : is_sublist(false) {}
 list::~list () {}
 
 
@@ -52,6 +52,18 @@ std::shared_ptr<list> list::concat (const std::shared_ptr<list>& a, const std::s
 }
 std::shared_ptr<list> list::sublist (const std::shared_ptr<list>& a, int index)
 {
+	if (index == 0)
+		return a;
+	
+	if (index >= 0 && a->is_sublist)
+	{
+		auto b = std::static_pointer_cast<list_sublist>(a);
+		if (b->end == b->size())
+		{
+			return sublist(b->a, index + b->start);
+		}
+	}
+	
 	int size = a->size() - index;
 	
 	if (size <= XY_LIST_DUPLICATE_LENGTH)
@@ -98,12 +110,16 @@ value list_basic::get (int i)
 
 list_sublist::list_sublist (const std::shared_ptr<list>& other, int s)
 	: start(s), end(other->size()), a(other)
-{ }
+{
+	is_sublist = true;
+}
 list_sublist::list_sublist (const std::shared_ptr<list>& other, int s, int e)
 	: start(s), end(e), a(other)
 {
 	if (end >= a->size())
 		end = a->size();
+	
+	is_sublist = true;
 }
 
 int list_sublist::size ()

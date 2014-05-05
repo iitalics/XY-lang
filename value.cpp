@@ -215,28 +215,27 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 	default: break;
 	}
 	
-	
 	if (type == other.type &&
 			is_type(type_orderable))
 		switch (op)
 		{
-			case '>':
-				out = from_bool(compare(other, parent) & compare_greater);
-				break;
-				
-			case '<':
-				out = from_bool(!(compare(other, parent) & (compare_greater | compare_equal)));
-				break;
-				
-			case lexer::token::gre_token: // '>='
-				out = from_bool(compare(other, parent) & (compare_greater | compare_equal));
-				break;
+		case '>':
+			out = from_bool(compare(other, parent) & compare_greater);
+			return true;
 			
-			case lexer::token::lse_token: // '<='
-				out = from_bool(!(compare(other, parent) & compare_greater));
-				break;
+		case '<':
+			out = from_bool(!(compare(other, parent) & (compare_greater | compare_equal)));
+			return true;
 			
-			default: break;
+		case lexer::token::gre_token: // '>='
+			out = from_bool(compare(other, parent) & (compare_greater | compare_equal));
+			return true;
+		
+		case lexer::token::lse_token: // '<='
+			out = from_bool(!(compare(other, parent) & compare_greater));
+			return true;
+		
+		default: break;
 		}
 	
 	if (!(is_type(type_number) && other.is_type(type_number)))
@@ -363,7 +362,12 @@ value value::list_get (int i)
 	if (type == type_list)
 		return list_obj->get(i);
 	else if (type == type_string)
-		return value::from_string(str.substr(i, 1));
+	{
+		if (i >= int(str.size()))
+			return value::from_string("");
+		else
+			return value::from_string(str.substr(i, 1));
+	}
 	else
 		return value();
 }

@@ -30,6 +30,14 @@ void state::import_native_functions (environment& e)
 	math_func1("cos", cos);
 	math_func1("tan", tan);
 	
+	e.add_native("length", [] ( _args_ )
+	{
+		if (!args.check("length", s, { value::type_iterable }))
+			return false;
+		
+		out = value::from_number(args.get(0).list_size());
+		return true;
+	});
 	
 	e.add_native("foldl", [] ( _args_ )
 	{
@@ -43,6 +51,29 @@ void state::import_native_functions (environment& e)
 		value it(args.get(2));
 		
 		for (int i = 0, size = it.list_size(); i < size; i++)
+		{
+			value x(it.list_get(i));
+			
+			if (!func->call(z, argument_list { z, x }, s))
+				return false;
+		}
+		
+		out = z;
+		return true;
+	});
+	
+	e.add_native("foldr", [] ( _args_ )
+	{
+		if (!args.check("foldr", s, { value::type_function,
+		                              value::type_any,
+									  value::type_iterable }))
+			return false;
+		
+		auto func(args.get(0).func_obj);
+		value z(args.get(1));
+		value it(args.get(2));
+		
+		for (int i = it.list_size(); i-- > 0; )
 		{
 			value x(it.list_get(i));
 			

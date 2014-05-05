@@ -256,20 +256,47 @@ bool list_comp_expression::constant () const { return false; }
 
 
 
+with_expression::with_expression ()
+	: closure_size(0)
+{ }
 
 bool with_expression::eval_tail_call (tail_call& tc, value& out, state::scope& parent_scope)
 {
 	state::scope scope(parent_scope(),
-		std::shared_ptr<closure>(new closure(vars.size(), parent_scope.local)));
+		std::shared_ptr<closure>(new closure(closure_size, parent_scope.local)));
 	value item;
 	
-	int i = 0;
+	int j, i = 0;
 	for (auto& v : vars)
 	{
 		if (!v.val->eval(item, scope))
 			return false;
 		
-		scope.local->set(i++, item);
+		if (v.is_list())
+		{
+			if (!item.is_type(value::type_iterable))
+			{
+				parent_scope().error().die()
+					<< "Cannot de-alias non-iterable value";
+				return false;
+			}
+			
+			for (j = 0; j < (int)(v.names.size() - 1); j++)
+				scope.local->set(i++, item.list_get(j));
+			
+			if (!v.variadic)
+				scope.local->set(i++, item.list_get(j));
+			else
+			{
+				value end;
+				if (!item.apply_operator(end, lexer::token::seq_token,
+								value::from_number(j), parent_scope()))
+					return false;
+				scope.local->set(i++, end);
+			}
+		}
+		else
+			scope.local->set(i++, item);
 	}
 	
 	return body->eval_tail_call(tc, out, scope);
@@ -287,7 +314,8 @@ bool with_expression::locate_symbols (const std::shared_ptr<symbol_locator>& loc
 		if (!v.val->locate_symbols(locator))
 			return false;
 		
-		locator->add(v.name);
+		for (auto& n : v.names)
+			locator->add(n);
 	}
 	
 	if (!body->locate_symbols(locator))
@@ -301,10 +329,25 @@ bool with_expression::constant () const { return false; }
 bool with_expression::add (const std::string& name, const std::shared_ptr<expression>& val)
 {
 	for (auto& v : vars)
-		if (v.name == name)
-			return false;
+		for (auto& n : v.names)
+			if (n == name)
+				return false;
 	
-	vars.push_back({ name, val });
+	closure_size++;
+	vars.push_back({ std::vector<std::string> { name }, val, false });
+	return true;
+}
+bool with_expression::add_list (const std::vector<std::string>& names, const std::shared_ptr<expression>& val, bool va)
+{
+	// yikes
+	for (auto& v : vars)
+		for (auto& n : v.names)
+			for (auto& m : names)
+				if (n == m)
+					return false;
+	
+	closure_size += names.size();
+	vars.push_back({ names, val, va });
 	return true;
 }
 
