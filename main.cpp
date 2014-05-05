@@ -32,10 +32,6 @@ int main (int argc, char** argv)
 			
 			if (!main_func->call(output, args, scope))
 				goto fail;
-			else
-			{
-				std::cout << "main =\n   " << output.to_str() << std::endl;
-			}
 		}
 		else
 			std::cout << "no main function found" << std::endl;

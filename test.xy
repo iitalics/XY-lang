@@ -1,6 +1,7 @@
 
-let fact (n) =
-	foldl(&*, 1, 1 .. n) ; foldl() built in
 
 let main () =
-	fact(5)
+	fwrite("test.txt",
+		@() = "hello, world!",
+		@{ let (true) = display("Write successful\n")
+		   let (false) = display("Write unsuccessful\n") })

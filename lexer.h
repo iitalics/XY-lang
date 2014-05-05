@@ -35,6 +35,7 @@ public:
 			neq_token,
 			gre_token,
 			lse_token,
+			rarr_token,
 			
 			keyword__start = 2000,
 			keyword_let = keyword__start,

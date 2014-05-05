@@ -133,6 +133,16 @@ value value::from_string (const std::string& str)
 
 bool value::apply_operator (value& out, int op, const value& other, state& parent)
 {
+	if (type == type_void)
+		switch (op)
+		{
+		case '+': case '-': case '/': case '*':
+		case '^': case '.': case lexer::token::seq_token:
+			out = value();
+			return true;
+		default: break;
+		}
+	
 	switch (op)
 	{
 	case lexer::token::eql_token:

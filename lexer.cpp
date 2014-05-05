@@ -24,7 +24,8 @@ std::vector<lexer::token::two_char> lexer::token::two_chars =
 	two_char("==", eql_token),
 	two_char("!=", neq_token),
 	two_char(">=", gre_token),
-	two_char("<=", lse_token)
+	two_char("<=", lse_token),
+	two_char("->", rarr_token)
 };
 
 

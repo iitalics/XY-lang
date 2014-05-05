@@ -502,7 +502,19 @@ bool parser::parse_exp_prologe (std::shared_ptr<expression>& out, std::shared_pt
 			
 			in = ce;
 		}
-		// if (lex.current().tok == lex::token::rarrow_token)
+		if (lex.current().tok == lexer::token::rarr_token)
+		{
+			std::shared_ptr<expression> fe;
+			
+			if (!lex.advance())
+				return false;
+			if (!parse_single_exp(fe))
+				return false;
+				
+			std::shared_ptr<call_expression> ce(new call_expression(fe));
+			ce->add(in);
+			in = ce;
+		}
 		else
 			break;
 	}

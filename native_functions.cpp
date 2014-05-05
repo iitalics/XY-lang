@@ -84,6 +84,68 @@ void state::import_native_functions (environment& e)
 		out = z;
 		return true;
 	});
+	
+	e.add_native("fread", [] ( _args_ )
+	{
+		if (!args.check("fread", s, { value::type_string,
+		                              value::type_function,
+									  value::type_function }))
+			return false;
+		
+		std::ifstream fs(args.get(0).str);
+		if (fs.good())
+		{
+			fs.seekg (0, std::ios::end);
+			int len = fs.tellg();
+			fs.seekg (0, std::ios::beg);
+			
+			char* buf = new char[len];
+			fs.read(buf, len);
+			fs.close();
+			
+			std::string str(buf, len);
+			delete[] buf;
+			
+			return args.get(1).func_obj->call(out, argument_list
+					{
+						value::from_string(str)
+					}, s);
+		}
+		else
+			return args.get(2).func_obj->call(out, argument_list(), s);
+	});
+	
+	e.add_native("fwrite", [] ( _args_ ) 
+	{
+		if (!args.check("fwrite", s, { value::type_string,
+		                              value::type_function,
+									  value::type_function }))
+			return false;
+		
+		std::ofstream fs(args.get(0).str);
+		bool success = false;
+		if (fs.good())
+		{
+			value data;
+			if (!args.get(1).func_obj->call(data, argument_list(), s))
+				return false;
+			fs << data.to_str();
+			fs.close();
+			success = true;
+		}
+		
+		return args.get(2).func_obj->call(out, argument_list
+				{
+					value::from_bool(success)
+				}, s);
+	});
+	
+	e.add_native("display", [] ( _args_ )
+	{
+		for (int i = 0; i < args.size; i++)
+			std::cout << args.get(i).to_str();
+		return true;
+	});
 }
 
 
