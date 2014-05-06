@@ -27,8 +27,12 @@ parser::~parser () {}
 struct function_generator
 {
 	std::vector<std::shared_ptr<func_body>> all_bodies;
+	std::string last_function;
 	
-	function_generator () {}
+	function_generator ()
+		: last_function("")
+	{ }
+	
 	function_generator (const std::shared_ptr<func_body>& first)
 	{
 		all_bodies.push_back(first);
@@ -56,6 +60,37 @@ struct function_generator
 		return true;
 	}
 };
+
+class lambda_expression
+	: public expression
+{
+public:
+	virtual bool eval (value& out, state::scope& scope)
+	{
+		std::shared_ptr<soft_function> func(new soft_function(scope.local));
+		for (auto body : g.all_bodies)
+			func->add_overload(body);
+		out = value::from_function(func);
+		return true;
+	}
+	
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
+	{
+		return g.locate_symbols(locator);
+	}
+	
+	void add (const std::shared_ptr<func_body>& body)
+	{
+		g.all_bodies.push_back(body);
+	}
+private:
+	function_generator g;
+};
+
+
+
+
+
 
 bool parser::parse_env (environment& env)
 {
@@ -101,10 +136,27 @@ bool parser::parse_declare (environment& env, function_generator& g)
 {
 	if (!lex.expect(lexer::token::keyword_let, true))
 		return false;
-	if (!lex.expect(lexer::token::symbol_token, false))
-		return false;
+	
+	std::string func_name;
+	
+	if (lex.current().tok == lexer::token::seq_token)
+	{
+		if (g.last_function == "")
+		{
+			parent.error().die_lex(lex)
+				<< "Cannot recall previous function: first function in environment";
+			return false;
+		}
+		func_name = g.last_function;
+	}
+	else
+	{
+		if (!lex.expect(lexer::token::symbol_token, false))
+			return false;
+		func_name = lex.current().str;
 		
-	std::string func_name(lex.current().str);
+		g.last_function = func_name;
+	}
 	
 	if (!lex.advance())
 		return false;
@@ -140,7 +192,8 @@ bool parser::parse_function (std::shared_ptr<func_body>& out)
 	
 	std::shared_ptr<func_body> body(new func_body());
 	
-	while (lex.current().tok != SYNTAX_FUNC_R)
+	if (lex.current().tok != SYNTAX_FUNC_R)
+	for (;;)
 	{
 		if (lex.current().tok == lexer::token::symbol_token)
 		{
@@ -239,7 +292,8 @@ bool parser::parse_function (std::shared_ptr<func_body>& out)
 
 bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 {
-	switch (lex.current().tok)
+	int first;
+	switch (first = lex.current().tok)
 	{
 	case lexer::token::number_token:
 		out = expression::create_const(value::from_number(lex.current().num));
@@ -294,6 +348,7 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 		goto prologue;
 	
 	case SYNTAX_MINI_LAMBDA_BIN:
+	case SYNTAX_MINI_LAMBDA_LEFT:
 		if (!lex.advance())
 			return false;
 		//std::cout << "binary mini-lambda: " << lex.current().to_str() << std::endl;
@@ -304,21 +359,34 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 			return false;
 		}
 		{
-			std::shared_ptr<expression> left = expression::create_closure_ref(0);
-			std::shared_ptr<expression> right = expression::create_closure_ref(1);
-			std::shared_ptr<expression> body = expression::create_binary(left, right, lex.current().tok);
+			std::shared_ptr<expression> body, right, left;
+			int op = lex.current().tok;
+			if (!lex.advance())
+				return false;
 			
-			std::shared_ptr<soft_function> func(new soft_function(""));
+			if (first == SYNTAX_MINI_LAMBDA_BIN)
+			{
+				left = expression::create_closure_ref(0);
+				right = expression::create_closure_ref(1);
+			}
+			else // if (first == SYNTAX_MINI_LAMBDA_LEFT)
+			{
+				left = expression::create_closure_ref(0);
+				if (!parse_exp(right))
+					return false;
+			}
+			body = expression::create_binary(left, right, op);
+			
 			std::shared_ptr<func_body> fb(new func_body());
-			
-			//fb->params.add_param(std::shared_ptr<expression>(nullptr));
-			//fb->params.add_param(std::shared_ptr<expression>(nullptr));
 			fb->body = body;
-			func->add_overload(fb);
 			
-			out = expression::create_const(value::from_function(func));
-			break;
+			std::shared_ptr<lambda_expression> le(new lambda_expression());
+			le->add(fb);
+			
+			out = le;
+			goto prologue;
 		}
+		
 	
 	default:
 		if (lex.current().is_unary_op())
@@ -544,25 +612,30 @@ bool parser::parse_list (std::shared_ptr<expression>& out)
 	std::shared_ptr<list_expression> le(new list_expression());
 	std::shared_ptr<expression> e;
 	
-	while (lex.current().tok != SYNTAX_LIST_R)
-	{
-		if (!parse_exp(e))
-			return false;
-		le->add(e);
-		
-		if (lex.current().tok == SYNTAX_LIST_SEP)
+	if (lex.current().tok != SYNTAX_LIST_R)
+		for (;;)
 		{
-			if (!lex.advance())
+			if (!parse_exp(e))
 				return false;
+			le->add(e);
+			
+			if (lex.current().tok == SYNTAX_LIST_SEP)
+			{
+				if (!lex.advance())
+					return false;
+			}
+			else if (lex.current().tok == SYNTAX_LIST_R)
+			{
+				break;
+			}
+			else
+			{
+				parent.error().die_lex(lex)
+					<< "Expected '" << SYNTAX_LIST_SEP << "' or '" << SYNTAX_LIST_R
+					<< "', got '" << lex.current().to_str() << "'";
+				return false;
+			}
 		}
-		else if (lex.current().tok != SYNTAX_LIST_R)
-		{
-			parent.error().die_lex(lex)
-				<< "Expected '" << SYNTAX_LIST_SEP << "' or '" << SYNTAX_LIST_R
-				<< "', got '" << lex.current().to_str() << "'";
-			return false;
-		}
-	}
 	if (!lex.advance())
 		return false;
 	
@@ -571,32 +644,6 @@ bool parser::parse_list (std::shared_ptr<expression>& out)
 }
 
 
-
-class lambda_expression
-	: public expression
-{
-public:
-	virtual bool eval (value& out, state::scope& scope)
-	{
-		std::shared_ptr<soft_function> func(new soft_function(scope.local));
-		for (auto body : g.all_bodies)
-			func->add_overload(body);
-		out = value::from_function(func);
-		return true;
-	}
-	
-	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator)
-	{
-		return g.locate_symbols(locator);
-	}
-	
-	void add (const std::shared_ptr<func_body>& body)
-	{
-		g.all_bodies.push_back(body);
-	}
-private:
-	function_generator g;
-};
 
 bool parser::parse_lambda (std::shared_ptr<expression>& out)
 {
@@ -695,7 +742,8 @@ bool parser::parse_with (std::shared_ptr<expression>& out)
 	std::shared_ptr<with_expression> w(new with_expression());
 	std::shared_ptr<expression> e;
 	
-	while (lex.current().tok != SYNTAX_WITH_R)
+	if (lex.current().tok != SYNTAX_WITH_R)
+	for (;;)
 	{
 		if (lex.current().tok == lexer::token::symbol_token)
 		{
@@ -770,7 +818,11 @@ bool parser::parse_with (std::shared_ptr<expression>& out)
 			if (!lex.advance())
 				return false;
 		}
-		else if (lex.current().tok != SYNTAX_WITH_R)
+		else if (lex.current().tok == SYNTAX_WITH_R)
+		{
+			break;
+		}
+		else
 		{
 			parent.error().die_lex(lex)
 				<< "Expected '" << SYNTAX_WITH_SEP << "' or '" << SYNTAX_WITH_R

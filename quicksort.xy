@@ -1,7 +1,0 @@
-
-let quicksort ([]) = []
-let quicksort (a) =
-	with ([ p, a.. ] = a)
-		quicksort(a $ t : t <= p) +
-		[ p ] +
-		quicksort(a $ t : t > p)

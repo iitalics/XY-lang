@@ -109,11 +109,11 @@ Example:
 Alternative Syntax:
 
     (&+)      ; equiv. to '(@(x, y) = x + y)'
+    (' * 2)   ; equiv. to '(@(x) = x * 2)'
 
 Planned, unimplented features:
 
     #(3 + 2)  ; equiv. to '(@() = 3 + 2)'
-    (' * 2)   ; equiv. to '(@(x) = x * 2)'
 
 List Comprehension
 -------------------------------

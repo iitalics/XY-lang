@@ -29,5 +29,5 @@
 
 
 
-#define SYNTAX_MINI_LAMBDA_L '`'
+#define SYNTAX_MINI_LAMBDA_LEFT '`'
 #define SYNTAX_MINI_LAMBDA_BIN '&'

@@ -143,7 +143,7 @@ private:
 		std::shared_ptr<expression> val;
 		bool variadic;
 		
-		inline bool is_list () const { return names.size() > 0; }
+		inline bool is_list () const { return names.size() > 1; }
 		inline std::string name () const { return names[0]; }
 	};
 	

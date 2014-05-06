@@ -76,6 +76,17 @@ std::shared_ptr<list> list::sublist (const std::shared_ptr<list>& a, int index)
 	else
 		return std::shared_ptr<list>(new list_sublist(a, index));
 }
+std::shared_ptr<list> list::basic (const std::vector<value>& values)
+{
+	if (values.size() == 0)
+		return empty();
+	else
+		return std::shared_ptr<list>(new list_basic(values));
+}
+
+
+
+
 
 /// list_basic
 

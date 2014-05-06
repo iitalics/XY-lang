@@ -201,7 +201,7 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 			std::vector<value> vs;
 			for (int i = start; i <= end; i++)
 				vs.push_back(value::from_number(i));
-			out = value::from_list(std::shared_ptr<list>(new list_basic(vs)));
+			out = value::from_list(list::basic(vs));
 			return true;
 		}
 		break;

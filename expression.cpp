@@ -156,7 +156,7 @@ bool list_expression::eval (value& out, state::scope& scope)
 		else
 			vs.push_back(v);
 	
-	out = value::from_list(std::shared_ptr<list>(new list_basic(vs)));
+	out = value::from_list(list::basic(vs));
 	return true;
 }
 bool list_expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator)
