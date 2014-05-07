@@ -142,8 +142,14 @@ private:
 		std::vector<std::string> names;
 		std::shared_ptr<expression> val;
 		bool variadic;
+		bool islist;
 		
-		inline bool is_list () const { return names.size() > 1; }
+		inline bool is_list () const
+		{
+			if (names.size() == 0 && variadic)
+				return false;
+			return islist;
+		}
 		inline std::string name () const { return names[0]; }
 	};
 	

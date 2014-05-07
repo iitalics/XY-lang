@@ -13,7 +13,7 @@ struct value
 	enum value_type
 	{
 		type_void = 0,
-		type_nil,
+		//type_nil,
 		type_number,
 		type_bool,
 		type_function,
@@ -76,7 +76,6 @@ struct value
 	
 	
 	
-	static inline value nil () { return value(type_nil); }
 	static value from_number (number n);
 	static value from_bool (bool b);
 	static value from_function (std::shared_ptr<function> f);

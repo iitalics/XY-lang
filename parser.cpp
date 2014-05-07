@@ -458,17 +458,20 @@ struct shunting_yard
 		switch (op)
 		{
 		case '^':
-			return 6;
+			return 7;
 		
 		case '.': case lexer::token::seq_token:
-			return 5;
+			return 6;
 		
 		case '*': case '/':
-			return 4;
+			return 5;
 		
 		case '+': case '-':
-			return 3;
+			return 4;
 		
+		case lexer::token::rarr_token:
+			return 3;
+			
 		case lexer::token::eql_token:
 		case lexer::token::neq_token:
 		case lexer::token::gre_token:
@@ -568,19 +571,6 @@ bool parser::parse_exp_prologe (std::shared_ptr<expression>& out, std::shared_pt
 			if (!lex.advance())
 				return false;
 			
-			in = ce;
-		}
-		if (lex.current().tok == lexer::token::rarr_token)
-		{
-			std::shared_ptr<expression> fe;
-			
-			if (!lex.advance())
-				return false;
-			if (!parse_single_exp(fe))
-				return false;
-				
-			std::shared_ptr<call_expression> ce(new call_expression(fe));
-			ce->add(in);
 			in = ce;
 		}
 		else

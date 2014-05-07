@@ -49,9 +49,6 @@ std::string value::to_str () const
 	case type_void:
 		return "void";
 		
-	case type_nil:
-		return "nil";
-	
 	case type_number:
 		ss << num;
 		return ss.str();
@@ -136,7 +133,11 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 	if (type == type_void)
 		switch (op)
 		{
-		case '+': case '-': case '/': case '*':
+		case '+':
+			out = other;
+			return true;
+			
+		case '-': case '/': case '*':
 		case '^': case '.': case lexer::token::seq_token:
 			out = value();
 			return true;
@@ -332,7 +333,7 @@ value::comparison value::compare (const value& other, state& parent)
 	case type_bool:
 		return cond == other.cond ? compare_equal : compare_none;
 	
-	case type_void: case type_nil:
+	case type_void:
 		return compare_equal;
 		
 	case type_list:
@@ -399,7 +400,11 @@ bool value::condition () const
 		return num != 0;
 	case type_bool:
 		return cond;
-	case type_void: case type_nil:
+	case type_list:
+		return list_obj != list::empty();
+	case type_string:
+		return str.size() > 0;
+	case type_void:
 		return false;
 	default:
 		return true;
@@ -440,8 +445,7 @@ std::string value::type_str (value_type t)
 	{
 	case type_number: return "number";
 	case type_void: return "void";
-	case type_nil: return "nil";
-	case type_bool: return "boolean";
+	case type_bool: return "bool";
 	case type_list: return "list";
 	case type_function: return "function";
 	

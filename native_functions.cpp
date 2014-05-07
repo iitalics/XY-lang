@@ -2,6 +2,7 @@
 #include "environment.h"
 #include "function.h"
 #include "value.h"
+#include "list.h"
 
 namespace xy {
 
@@ -21,6 +22,10 @@ namespace xy {
 		out = value::from_number( func_ (args.get(0).num));              \
 		return true;                                                     \
 	})
+//
+
+#define check_one(name_) \
+	if (!args.check(name_, s, { value::type_any } )) return false
 
 void state::import_native_functions (environment& e)
 {
@@ -36,6 +41,74 @@ void state::import_native_functions (environment& e)
 			return false;
 		
 		out = value::from_number(args.get(0).list_size());
+		return true;
+	});
+	
+	e.add_native("indexof", [] ( _args_ )
+	{
+		if (!args.check("indexof", s, { value::type_iterable,
+                                           value::type_any }))
+			return false;
+		
+		auto it(args.get(0));
+		value search(args.get(1));
+		
+		for (int i = 0, size = it.list_size(); i < size; i++)
+			if (it.list_get(i).equals(search, s))
+			{
+				out = value::from_number(i);
+				return true;
+			}
+		out = value::from_number(-1);
+		return true;
+	});
+	
+	e.add_native("distribute", [] ( _args_ )
+	{
+		if (!args.check("distribute", s, { value::type_function,
+		                              value::type_iterable }))
+			return false;
+		
+		std::vector<value> a, b;
+		auto func(args.get(0).func_obj);
+		auto it(args.get(1));
+		value r, v;
+		for (int i = 0, size = it.list_size(); i < size; i++)
+		{
+			v = it.list_get(i);
+			if (!func->call(r, argument_list { v }, s))
+				return false;
+			(r.condition() ? a : b).push_back(v);
+		}
+		
+		// not really happy with thists
+		out = value::from_list(list::basic(std::vector<value> {
+				value::from_list(list::basic(a)),
+				value::from_list(list::basic(b)),
+			}));
+		return true;
+	});
+	
+	e.add_native("first", [] ( _args_ )
+	{
+		if (!args.check("first", s, { value::type_function,
+		                              value::type_iterable,
+									  value::type_any }))
+			return false;
+		
+		auto func(args.get(0).func_obj);
+		auto it(args.get(1));
+		value r;
+		for (int i = 0, size = it.list_size(); i < size; i++)
+			if (!func->call(r, argument_list { it.list_get(i) }, s))
+				return false;
+			else if (r.condition())
+			{
+				out = r;
+				return true;
+			}
+		
+		out = args.get(2);
 		return true;
 	});
 	
@@ -145,6 +218,138 @@ void state::import_native_functions (environment& e)
 		for (int i = 0; i < args.size; i++)
 			std::cout << args.get(i).to_str();
 		return true;
+	});
+	
+	e.add_native("die", [] ( _args_ )
+	{
+		if (!args.check("die", s, { value::type_string }))
+			return false;
+		
+		s.error().die()
+			<< args.get(0).str;
+		return false;
+	});
+	e.add_native("try", [] ( _args_ )
+	{
+		if (!args.check("fwrite", s, { value::type_function, value::type_function }))
+			return false;
+		
+		if (!args.get(0).func_obj->call(out, argument_list(), s))
+		{
+			std::string msg(s.error().flush());
+			
+			return args.get(1).func_obj->call(out, argument_list
+				{
+					value::from_string(msg)
+				}, s);
+		}
+		else
+			return true;
+	});
+	
+	
+	///-    data types    -///
+	
+	e.add_native("int", [] ( _args_ )
+	{
+		check_one("int");
+		value v(args.get(0));
+		if (v.type == value::type_number)
+			out = value::from_number((int)(v.num));
+		else if (v.type == value::type_string)
+			out = value::from_number(atoi(v.str.c_str()));
+		else
+			out = value::from_number(0);
+		return true;
+	});
+	e.add_native("string", [] ( _args_ )
+	{
+		check_one("string");
+		out = value::from_string(args.get(0).to_str());
+		return true;
+	});
+	e.add_native("number", [] ( _args_ )
+	{
+		check_one("number"); 
+		value v(args.get(0));
+		if (v.type == value::type_number) out = v;
+		else if (v.type == value::type_string)
+		{
+			std::istringstream ss(v.str);
+			number n;
+			ss >> n;
+			out = value::from_number(n);
+		}
+		else
+			out = value::from_number(0);
+		return true;
+	});
+	e.add_native("list", [] ( _args_ ) // not sure why the fuck you'd ever use this function
+	{
+		std::vector<value> q;
+		for (int i = 0; i < args.size; i++)
+			q.push_back(args.values[i]);
+		
+		out = value::from_list(list::basic(q));
+		return true;
+	});
+	e.add_native("bool", [] ( _args_ )
+	{
+		check_one("bool"); 
+		out = value::from_bool(args.get(0).condition());
+		return true;
+	});
+	e.add_native("void", [] ( _args_ )
+	{
+		out = value();
+		return true;
+	});
+	
+	
+	e.add_native("void?", [] ( _args_ )
+	{
+		check_one("void?");
+		return out = value::from_bool(args.get(0).is_type(value::type_void)), true;
+	});
+	e.add_native("list?", [] ( _args_ )
+	{
+		check_one("list?");
+		return out = value::from_bool(args.get(0).is_type(value::type_list)), true;
+	});
+	e.add_native("number?", [] ( _args_ )
+	{
+		check_one("number?");
+		return out = value::from_bool(args.get(0).is_type(value::type_number)), true;
+	});
+	e.add_native("string?", [] ( _args_ )
+	{
+		check_one("string?");
+		return out = value::from_bool(args.get(0).is_type(value::type_string)), true;
+	});
+	e.add_native("function?", [] ( _args_ )
+	{
+		check_one("function?");
+		return out = value::from_bool(args.get(0).is_type(value::type_function)), true;
+	});
+	e.add_native("bool?", [] ( _args_ )
+	{
+		check_one("bool?");
+		return out = value::from_bool(args.get(0).is_type(value::type_bool)), true;
+	});
+	e.add_native("int?", [] ( _args_ )
+	{
+		check_one("int?");
+		return out = value::from_bool(args.get(0).is_type(value::type_int)), true;
+	});
+	e.add_native("iterable?", [] ( _args_ )
+	{
+		check_one("iterable?");
+		return out = value::from_bool(args.get(0).is_type(value::type_iterable)), true;
+	});
+	e.add_native("orderable?", [] ( _args_ )
+	{
+		check_one("orderable?");
+		return out = value::from_bool(args.get(0).is_type(value::type_orderable)), true;
 	});
 }
 

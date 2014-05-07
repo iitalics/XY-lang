@@ -260,16 +260,10 @@ bool lexer::parse_num ()
 		
 		n = (n * base) + digit;
 	}
-	if (peek() == '.')
+	if (peek() == '.' && base == 10)
 	{
 		read();
 		
-		if (base != 10)
-		{
-			parent.error().die_lex(*this)
-				<< "Non-base 10 decimals not supported";
-			return false;
-		}
 		mag = 1;
 		
 		while (is_sym_char(peek()))
@@ -277,8 +271,8 @@ bool lexer::parse_num ()
 			if (!parse_digit(read(), base, digit))
 				return false;
 			
-			mag /= base;
-			n += mag * digit;
+			mag *= base;
+			n += digit / mag;
 		}
 	}
 	
@@ -308,11 +302,25 @@ bool lexer::parse_str ()
 	char c, quote = read();
 	std::ostringstream ss;
 	
+read_again: // for C-style string breakup
 	while (peek() != quote)
 	{
+		if (eof())
+		{
+			parent.error().die_lex(*this)
+				<< "Expected closing " << quote << " before EOF";
+			return false;
+		}
+		
 		c = read();
 		
-		if (c == '\\')
+		if (c == '\n')
+		{
+			parent.error().die_lex(*this)
+				<< "Invalid line break in string literal";
+			return false;
+		}
+		else if (c == '\\')
 			switch (c = read())
 			{
 			case 'x':
@@ -329,7 +337,7 @@ bool lexer::parse_str ()
 			case 't': c = '\t'; break;
 			case 'n': c = '\n'; break;
 			case '0': c = '\0'; break;
-		//	case 'r': c = '\r'; break;
+			case 'r': c = '\r'; break;
 			case '\\': case '\'': case '\"':
 				// c = c
 				break;
@@ -342,11 +350,17 @@ bool lexer::parse_str ()
 		
 		ss << c;
 	}
+	read(); // flush quote
+	trim_left();
+	if (peek() == quote)
+	{
+		read();
+		goto read_again;
+	}
 	
 	current_token.tok = token::string_token;
 	current_token.str = ss.str();
 	
-	read(); // flush quote
 	return true;
 }
 
@@ -375,7 +389,6 @@ std::string lexer::token::to_str () const
 		ss << num;
 		return ss.str();
 		
-	
 	case string_token:
 		return string_string();
 		
@@ -408,7 +421,8 @@ bool lexer::token::is_binary_op () const
 		tok == seq_token || tok == eql_token ||
 		tok == neq_token || tok == gre_token ||
 		tok == lse_token ||
-		tok == keyword_and || tok == keyword_or;
+		tok == keyword_and || tok == keyword_or ||
+		tok == rarr_token;
 }
 bool lexer::token::is_expression () const
 {
@@ -418,7 +432,7 @@ bool lexer::token::is_expression () const
 		tok == SYNTAX_LAMBDA ||
 		tok == symbol_token ||
 		tok == keyword_false || tok == keyword_true ||
-		tok == number_token;
+		tok == number_token || tok == string_token;
 }
 
 

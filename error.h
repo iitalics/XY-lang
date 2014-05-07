@@ -11,7 +11,7 @@ public:
 	error_handler ();
 	
 	void dump ();
-	void flush ();
+	std::string flush ();
 	
 	std::ostream& die ();
 	std::ostream& die_lex (const lexer& lex);

@@ -19,10 +19,13 @@ void error_handler::dump ()
 	
 	flush();
 }	
-void error_handler::flush ()
+std::string error_handler::flush ()
 {
+	std::string s(die_stream.str());
 	die_stream.str(std::string());
 	dead = false;
+	
+	return s;
 }
 
 

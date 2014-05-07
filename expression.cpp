@@ -334,7 +334,7 @@ bool with_expression::add (const std::string& name, const std::shared_ptr<expres
 				return false;
 	
 	closure_size++;
-	vars.push_back({ std::vector<std::string> { name }, val, false });
+	vars.push_back({ std::vector<std::string> { name }, val, false, false });
 	return true;
 }
 bool with_expression::add_list (const std::vector<std::string>& names, const std::shared_ptr<expression>& val, bool va)
@@ -347,7 +347,7 @@ bool with_expression::add_list (const std::vector<std::string>& names, const std
 					return false;
 	
 	closure_size += names.size();
-	vars.push_back({ names, val, va });
+	vars.push_back({ names, val, va, true });
 	return true;
 }
 
@@ -540,7 +540,14 @@ std::shared_ptr<expression> expression::create_binary (const std::shared_ptr<exp
 											const std::shared_ptr<expression>& b,
 											int op)
 {
-	return std::shared_ptr<expression>(new binary_exp(a, b, op));
+	if (op == lexer::token::rarr_token)
+	{
+		std::shared_ptr<call_expression> ce(new call_expression(b));
+		ce->add(a);
+		return ce;
+	}
+	else
+		return std::shared_ptr<expression>(new binary_exp(a, b, op));
 }
 std::shared_ptr<expression> expression::create_symbol (const std::string& sym)
 {

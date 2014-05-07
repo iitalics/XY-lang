@@ -5,18 +5,54 @@
 #include "value.h"
 #include "list.h"
 
+
+#define XY_VERSION "version 0.9 beta (c++11 build)"
+#define XY_COMPILE_INFO "last modified: may 6, 2014"
+
+
+
+
+static int help_text ()
+{
+	std::cout << "usage:  xy [flags] PROGRAM [program arguments]\n"
+	             "\n"
+				 "   --version          display version info\n"
+				 "   -h, --help         show this help text\n";
+	return 0;
+}
+
+static int version_info ()
+{
+	std::cout << "xy standalone interpreter\n"
+				 "| " XY_VERSION "\n"
+				 "| " XY_COMPILE_INFO "\n";
+	return 0;
+}
+
+
 int main (int argc, char** argv)
 {
 	if (argc <= 1)
-	{
-		std::cerr << "Usage: xy FILE1, FILE2..." << std::endl;
-		return 0;
-	}
+		return help_text();
 	
 	
 	xy::state xy;
 	
-	if (!xy.load(std::string(argv[1])))
+	int start;
+	
+	for (start = 1; start <= argc; start++)
+	{
+		std::string arg(argv[start]);
+		
+		if (arg == "--version")
+			return version_info();
+		else if (arg == "-h" || arg == "--help")
+			return help_text();
+		else
+			break;
+	}
+	
+	if (!xy.load(std::string(argv[start])))
 		goto fail;
 	
 	{
@@ -27,7 +63,7 @@ int main (int argc, char** argv)
 			xy::value output;
 			
 			std::vector<xy::value> arg_strings;
-			for (int i = 2; i < argc; i++)
+			for (int i = start + 1; i < argc; i++)
 				arg_strings.push_back(xy::value::from_string(std::string(argv[i])));
 			
 			xy::argument_list args
