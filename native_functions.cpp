@@ -158,6 +158,55 @@ void state::import_native_functions (environment& e)
 		return true;
 	});
 	
+	
+	e.add_native("filter", [] ( _args_ )
+	{
+		if (!args.check("filter", s, { value::type_function,
+		                               value::type_iterable }))
+			return false;
+		std::vector<value> vs;
+		auto func(args.get(0).func_obj);
+		value it(args.get(1));
+		value x, b;
+		for (int i = 0, size = it.list_size(); i < size; i++)
+		{
+			x = it.list_get(i);
+			
+			if (!func->call(b, argument_list { x }, s))
+				return false;
+			
+			if (b.condition())
+				vs.push_back(x);
+		}
+		
+		out = value::from_list(list::basic(vs));
+		return true;
+	});
+	
+	
+	e.add_native("map", [] ( _args_ )
+	{
+		if (!args.check("map", s, { value::type_function,
+		                               value::type_iterable }))
+			return false;
+		std::vector<value> vs;
+		auto func(args.get(0).func_obj);
+		value it(args.get(1));
+		value x;
+		for (int i = 0, size = it.list_size(); i < size; i++)
+		{
+			x = it.list_get(i);
+			
+			if (!func->call(x, argument_list { x }, s))
+				return false;
+			
+			vs.push_back(x);
+		}
+		
+		out = value::from_list(list::basic(vs));
+		return true;
+	});
+	
 	e.add_native("fread", [] ( _args_ )
 	{
 		if (!args.check("fread", s, { value::type_string,
@@ -257,7 +306,7 @@ void state::import_native_functions (environment& e)
 		if (v.type == value::type_number)
 			out = value::from_number((int)(v.num));
 		else if (v.type == value::type_string)
-			out = value::from_number(atoi(v.str.c_str()));
+			out = value::from_number(v.str.c_str()[0]);
 		else
 			out = value::from_number(0);
 		return true;
@@ -305,52 +354,23 @@ void state::import_native_functions (environment& e)
 		return true;
 	});
 	
+	#define type_check_func(name_, v_) \
+		e.add_native(name_, [] ( _args_ ) { \
+			check_one(name_); \
+			out = value::from_bool(args.get(0).is_type(value:: v_ )); \
+			return true; \
+		})
 	
-	e.add_native("void?", [] ( _args_ )
-	{
-		check_one("void?");
-		return out = value::from_bool(args.get(0).is_type(value::type_void)), true;
-	});
-	e.add_native("list?", [] ( _args_ )
-	{
-		check_one("list?");
-		return out = value::from_bool(args.get(0).is_type(value::type_list)), true;
-	});
-	e.add_native("number?", [] ( _args_ )
-	{
-		check_one("number?");
-		return out = value::from_bool(args.get(0).is_type(value::type_number)), true;
-	});
-	e.add_native("string?", [] ( _args_ )
-	{
-		check_one("string?");
-		return out = value::from_bool(args.get(0).is_type(value::type_string)), true;
-	});
-	e.add_native("function?", [] ( _args_ )
-	{
-		check_one("function?");
-		return out = value::from_bool(args.get(0).is_type(value::type_function)), true;
-	});
-	e.add_native("bool?", [] ( _args_ )
-	{
-		check_one("bool?");
-		return out = value::from_bool(args.get(0).is_type(value::type_bool)), true;
-	});
-	e.add_native("int?", [] ( _args_ )
-	{
-		check_one("int?");
-		return out = value::from_bool(args.get(0).is_type(value::type_int)), true;
-	});
-	e.add_native("iterable?", [] ( _args_ )
-	{
-		check_one("iterable?");
-		return out = value::from_bool(args.get(0).is_type(value::type_iterable)), true;
-	});
-	e.add_native("orderable?", [] ( _args_ )
-	{
-		check_one("orderable?");
-		return out = value::from_bool(args.get(0).is_type(value::type_orderable)), true;
-	});
+	
+	type_check_func("void?", type_void);
+	type_check_func("list?", type_list);
+	type_check_func("string?", type_string);
+	type_check_func("number?", type_number);
+	type_check_func("function?", type_function);
+	type_check_func("map?", type_map);
+	type_check_func("int?", type_int);
+	type_check_func("iterable?", type_iterable);
+	type_check_func("orderable?", type_orderable);
 }
 
 

@@ -3,6 +3,7 @@
 #include "lexer.h"
 #include "function.h"
 #include "list.h"
+#include "map.h"
 
 namespace xy {
 
@@ -22,6 +23,7 @@ value::value (const value& other)
 	case type_string:	str = other.str; break;
 	case type_number: 	num = other.num; break;
 	case type_function:	func_obj = other.func_obj; break;
+	case type_map:      map_obj = other.map_obj; break;
 	default: break;
 	}
 }
@@ -35,6 +37,7 @@ value& value::operator=(const value& other)
 	case type_string:	str = other.str; break;
 	case type_number: 	num = other.num; break;
 	case type_function:	func_obj = other.func_obj; break;
+	case type_map:      map_obj = other.map_obj; break;
 	default: break;
 	}
 	return *this;
@@ -88,10 +91,14 @@ std::string value::to_str () const
 	case type_string:
 		return str;
 	
+	case type_map:
+		return "<map object>";
+	
 	default:
 		return "??";
 	}
 }
+
 
 
 
@@ -108,22 +115,28 @@ value value::from_bool (bool b)
 	v.cond = b;
 	return v;
 }
-value value::from_function (std::shared_ptr<function> f)
+value value::from_string (const std::string& str)
+{
+	value v(type_string);
+	v.str = str;
+	return v;
+}
+value value::from_function (const std::shared_ptr<function>& f)
 {
 	value v(type_function);
 	v.func_obj = f;
 	return v;
 }
-value value::from_list (std::shared_ptr<list> l)
+value value::from_list (const std::shared_ptr<list>& l)
 {
 	value v(type_list);
 	v.list_obj = l;
 	return v;
 }
-value value::from_string (const std::string& str)
+value value::from_map (const std::shared_ptr<map>& m)
 {
-	value v(type_string);
-	v.str = str;
+	value v(type_map);
+	v.map_obj = m;
 	return v;
 }
 
@@ -221,6 +234,11 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 			out = value::from_string(ss.str());
 			return true;
 		}
+		if (is_type(type_map) && other.is_type(type_map))
+		{
+			out = value::from_map(map::concat(map_obj, other.map_obj));
+			return true;
+		}
 		break;
 	
 	default: break;
@@ -307,6 +325,29 @@ bool value::apply_unary (value& out, int op, state& parent)
 		out.type = type_bool;
 		return true;
 	
+	case lexer::token::keyword_hd:
+		if (!is_type(type_iterable))
+			goto bad_input;
+		out = list_get(0);
+		return true;
+	
+	case lexer::token::keyword_tl:
+		if (is_type(type_list))
+		{
+			out = value::from_list(list::sublist(list_obj, 1));
+			return true;
+		}
+		if (is_type(type_string))
+		{
+			if (str.size() == 0)
+				out = *this;
+			else
+				out = value::from_string(str.substr(1));
+			return true;
+		}
+		//goto bad_input;
+		break;
+		
 	default: break;
 	}
 bad_input:
@@ -447,7 +488,9 @@ std::string value::type_str (value_type t)
 	case type_void: return "void";
 	case type_bool: return "bool";
 	case type_list: return "list";
+	case type_string: return "string";
 	case type_function: return "function";
+	case type_map: return "map";
 	
 	case type_int: return "integer";
 	case type_iterable: return "iterable";

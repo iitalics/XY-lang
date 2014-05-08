@@ -29,7 +29,7 @@ Booleans
 Lists
 -------------------------------
     [ 1, 2, 3 ]             ; = [ 1, 2, 3 ]
-	3 .. 9                  ; = [ 3, 4, 5, 6, 7, 8, 9 ]
+    3 .. 9                  ; = [ 3, 4, 5, 6, 7, 8, 9 ]
     [ 5, 9, 4 ] . 0         ; = 5
     [ 5, 9, 4 ] . 1         ; = 9
     [ 5, 6, 2, 3, 5 ] .. 2  ; = [ 2, 3, 5 ]
@@ -71,9 +71,17 @@ Other parameters may be used in the conditions of a parameter
         filter (f, a .. 1)
     ; see 'list comprehension' for built-in list filtering
 
-Planned, unimplented features:
+Alternative syntax:
 
-    (x -> y)       ; equiv. to 'y(x)'
+    x -> y        ; equiv. to 'y(x)'
+    x -> f -> g   ; equiv. to 'g( f(x) )'
+
+Order of operations precedence for '->' is less than numeral operators but greater than comparison operators
+
+    ; these are all equivalent
+    c == a + b -> f
+    c == ((a + b) -> f)
+    c == f(a + b)
 
 'With' Aliasing
 -------------------------------
@@ -131,6 +139,20 @@ Examples:
 
     let double_all (a) =     ; list of the values of a, doubled
         a $ t = t * 2
+
+Maps
+-------------------------------
+
+Syntax:
+
+    { key1 = value1, key2 = value2 }
+    map_object::key1
+
+Examples:
+
+    with (foo = { x = 2, y = 3 })
+        foo
+
 
 Globals
 -------------------------------

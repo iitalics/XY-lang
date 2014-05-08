@@ -45,7 +45,7 @@ bool symbol_locator::locate (const std::string& sym, int& out_index, int& out_de
 	{
 		index = 0;
 		
-		for (auto s : *it)
+		for (auto& s : *it)
 			if (s == sym)
 			{
 				out_index = index;
@@ -94,7 +94,7 @@ bool call_expression::eval_tail_call (tail_call& tc, value& out, state::scope& s
 	
 	argument_list arg_list(args.size());
 	int i = 0;
-	for (auto e : args)
+	for (auto& e : args)
 		if (!e->eval(arg_list.values[i++], scope))
 			return false;
 	
@@ -129,7 +129,7 @@ bool call_expression::locate_symbols (const std::shared_ptr<symbol_locator>& loc
 	if (!func_exp->locate_symbols(locator))
 		return false;
 	
-	for (auto e : args)
+	for (auto& e : args)
 		if (!e->locate_symbols(locator))
 			return false;
 	
@@ -150,7 +150,7 @@ bool list_expression::eval (value& out, state::scope& scope)
 	std::vector<value> vs;
 	value v;
 	
-	for (auto e : items)
+	for (auto& e : items)
 		if (!e->eval(v, scope))
 			return false;
 		else
@@ -161,14 +161,14 @@ bool list_expression::eval (value& out, state::scope& scope)
 }
 bool list_expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator)
 {
-	for (auto e : items)
+	for (auto& e : items)
 		if (!e->locate_symbols(locator))
 			return false;
 	return true;
 }
 bool list_expression::constant () const
 {
-	for (auto e : items)
+	for (auto& e : items)
 		if (!e->constant())
 			return false;
 	return true;
@@ -350,6 +350,87 @@ bool with_expression::add_list (const std::vector<std::string>& names, const std
 	vars.push_back({ names, val, va, true });
 	return true;
 }
+
+
+
+
+
+
+
+
+
+bool map_expression::eval (value& out, state::scope& scope)
+{
+	std::vector<value> vs;
+	value v;
+	for (auto& e : vals)
+		if (!e->eval(v, scope))
+			return false;
+		else
+			vs.push_back(v);
+	
+	out = value::from_map(map::create(keys, vs));
+	return true;
+}
+bool map_expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator)
+{
+	for (auto& e : vals)
+		if (!e->locate_symbols(locator))
+			return false;
+	return true;
+}
+
+bool map_expression::add (const std::string& name, const std::shared_ptr<expression>& val)
+{
+	auto hash(map::get_hash(name));
+	
+	for (auto& k : keys)
+		if (k == hash)
+			return false;
+	
+	keys.push_back(hash);
+	vals.push_back(val);
+	return true;
+}
+
+
+map_access_expression::map_access_expression (const std::string& k, const std::shared_ptr<expression>& e)
+	: left(e), key(map::get_hash(k)), keyname(k)
+{ }
+
+bool map_access_expression::eval (value& out, state::scope& scope)
+{
+	value m;
+	if (!left->eval(m, scope))
+		return false;
+	
+	if (!m.is_type(value::type_map))
+	{
+		scope().error().die()
+			<< "Cannot access property '" << keyname << "' of non-map object";
+		return false;
+	}
+	
+	auto obj(m.map_obj);
+	out = obj->get(key);
+	return true;
+}
+bool map_access_expression::locate_symbols (const std::shared_ptr<symbol_locator>& locator)
+{
+	return left->locate_symbols(locator);
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

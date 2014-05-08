@@ -36,12 +36,14 @@ public:
 			gre_token,
 			lse_token,
 			rarr_token,
+			box_token,
 			
 			keyword__start = 2000,
 			keyword_let = keyword__start,
 			keyword_with, keyword_use, 
 			keyword_true, keyword_false,
-			keyword_or, keyword_and
+			keyword_or, keyword_and,
+			keyword_hd, keyword_tl
 		};
 		
 		token (int tok_ = eof_token);

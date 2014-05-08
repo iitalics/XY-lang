@@ -6,6 +6,7 @@ namespace xy {
 class function;
 class error_handler;
 class list;
+class map;
 struct argument_list;
 
 struct value
@@ -19,6 +20,7 @@ struct value
 		type_function,
 		type_list,
 		type_string,
+		type_map,
 		
 		// ambiguous types
 		type_int,
@@ -47,6 +49,7 @@ struct value
 	};
 	std::shared_ptr<function> func_obj;
 	std::shared_ptr<list> list_obj;
+	std::shared_ptr<map> map_obj;
 	std::string str;
 	
 	
@@ -78,9 +81,11 @@ struct value
 	
 	static value from_number (number n);
 	static value from_bool (bool b);
-	static value from_function (std::shared_ptr<function> f);
-	static value from_list (std::shared_ptr<list> l);
 	static value from_string (const std::string& str);
+	
+	static value from_function (const std::shared_ptr<function>& f);
+	static value from_list (const std::shared_ptr<list>& l);
+	static value from_map (const std::shared_ptr<map>& m);
 	
 	static std::string type_str (value_type t);
 	static std::string true_string ();

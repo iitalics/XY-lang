@@ -12,10 +12,9 @@ namespace xy {
 std::vector<std::string> lexer::token::keywords
 {
 	"let", "with", "use",
-	
 	value::true_string(), value::false_string(),
-	
-	"or", "and"
+	"or", "and", 
+	"hd", "tl"
 };
 
 std::vector<lexer::token::two_char> lexer::token::two_chars =
@@ -25,7 +24,8 @@ std::vector<lexer::token::two_char> lexer::token::two_chars =
 	two_char("!=", neq_token),
 	two_char(">=", gre_token),
 	two_char("<=", lse_token),
-	two_char("->", rarr_token)
+	two_char("->", rarr_token),
+	two_char("::", box_token)
 };
 
 
@@ -410,7 +410,8 @@ std::string lexer::token::to_str () const
 
 bool lexer::token::is_unary_op () const
 {
-	return tok == '-' || tok == '!';
+	return tok == '-' || tok == '!' ||
+		tok == keyword_hd || tok == keyword_tl;
 }
 bool lexer::token::is_binary_op () const
 {

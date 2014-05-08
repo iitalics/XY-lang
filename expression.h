@@ -1,6 +1,7 @@
 #pragma once
 
 #include "parser.h"
+#include "map.h"
 
 namespace xy {
 
@@ -68,7 +69,8 @@ class symbol_expr;
 
 
 
-class call_expression : public expression
+class call_expression :
+	public expression
 {
 public:
 	inline call_expression (const std::shared_ptr<expression>& func)
@@ -86,8 +88,8 @@ private:
 	std::vector<std::shared_ptr<expression>> args;
 };
 
-
-class list_expression : public expression
+class list_expression :
+	public expression
 {
 public:
 	list_expression ();
@@ -159,8 +161,38 @@ private:
 };
 
 
-/*
+
+
+
+class map_expression :
+	public expression
+{
+public:
+	virtual bool eval (value& out, state::scope& scope);
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
 	
-*/
+	bool add (const std::string& name, const std::shared_ptr<expression>& val);
+	
+private:
+	std::vector<map::hash> keys;
+	std::vector<std::shared_ptr<expression>> vals;
+};
+
+class map_access_expression :
+	public expression
+{
+public:
+	map_access_expression (const std::string& k, const std::shared_ptr<expression>& e);
+	
+	virtual bool eval (value& out, state::scope& scope);
+	virtual bool locate_symbols (const std::shared_ptr<symbol_locator>& locator);
+	
+private:
+	std::shared_ptr<expression> left;
+	map::hash key;
+	std::string keyname;
+};
+
+
 
 };

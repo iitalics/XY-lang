@@ -347,6 +347,11 @@ bool parser::parse_single_exp (std::shared_ptr<expression>& out)
 			return false;
 		goto prologue;
 	
+	case SYNTAX_MAP_L:
+		if (!parse_map(out))
+			return false;
+		goto prologue;
+	
 	case SYNTAX_MINI_LAMBDA_BIN:
 	case SYNTAX_MINI_LAMBDA_LEFT:
 		if (!lex.advance())
@@ -572,6 +577,18 @@ bool parser::parse_exp_prologe (std::shared_ptr<expression>& out, std::shared_pt
 				return false;
 			
 			in = ce;
+		}
+		else if (lex.current().tok == lexer::token::box_token)
+		{
+			if (!lex.advance())
+				return false;
+			if (!lex.expect(lexer::token::symbol_token))
+				return false;
+			std::string n(lex.current().str);
+			if (!lex.advance())
+				return false;
+			
+			in = std::shared_ptr<expression>(new map_access_expression(n, in));
 		}
 		else
 			break;
@@ -838,5 +855,53 @@ bool parser::parse_with (std::shared_ptr<expression>& out)
 	return true;
 }
 
+
+bool parser::parse_map (std::shared_ptr<expression>& out)
+{
+	if (!lex.expect(SYNTAX_MAP_L, true))
+		return false;
+	
+	std::shared_ptr<map_expression> m(new map_expression());
+	std::shared_ptr<expression> e;
+	
+	if (lex.current().tok != SYNTAX_MAP_R)
+		for (;;)
+		{
+			if (!lex.expect(lexer::token::symbol_token))
+				return false;
+			std::string k(lex.current().str);
+			if (!lex.advance())
+				return false;
+			if (!lex.expect(SYNTAX_MAP_SET, true))
+				return false;
+			if (!parse_exp(e))
+				return false;
+			
+			m->add(k, e);
+			
+			if (lex.current().tok == SYNTAX_MAP_SEP)
+			{
+				if (!lex.advance())
+					return false;
+			}
+			else if (lex.current().tok == SYNTAX_MAP_R)
+			{
+				break;
+			}
+			else
+			{
+				parent.error().die_lex(lex)
+					<< "Expected '" << SYNTAX_MAP_SEP << "' or '" << SYNTAX_MAP_R
+					<< "', got '" << lex.current().to_str() << "'";
+				return false;
+			}
+		}
+	
+	if (!lex.advance())
+		return false;
+	
+	out = m;
+	return true;
+}
 
 };

@@ -1,15 +1,15 @@
 CXX=g++
-CXXFLAGS=-Wall -Wextra -Wno-unused-parameter -std=c++11
+CXXFLAGS=-Wall -Wextra -Wno-unused-parameter -std=c++11 
 
 LINK=g++
 LINKFLAGS=-lm -O3
 
 
 OUTPUT=xy
-SOURCES=		main.cpp state.cpp lexer.cpp        \
-				error.cpp list.cpp environment.cpp  \
-				parser.cpp value.cpp function.cpp   \
-				expression.cpp native_functions.cpp
+SOURCES=		main.cpp state.cpp lexer.cpp map.cpp \
+				error.cpp list.cpp environment.cpp   \
+				parser.cpp value.cpp function.cpp    \
+				expression.cpp native_functions.cpp  \
 
 
 OBJECTS=$(SOURCES:%.cpp=obj/%.o)
@@ -32,3 +32,6 @@ obj:
 
 $(OUTPUT): obj $(OBJECTS)
 	$(LINK) $(OBJECTS) $(LINKFLAGS) -o $(OUTPUT)
+	
+boots: $(OUTPUT)
+	cp $(OUTPUT) bootstrap
