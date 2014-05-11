@@ -275,31 +275,41 @@ bool value::apply_operator (value& out, int op, const value& other, state& paren
 	{
 	case '+':
 		out.num = num + other.num;
-		break;
+		return true;
 	case '-':
 		out.num = num - other.num;
-		break;
+		return true;
 	case '*':
 		out.num = num * other.num;
-		break;
-	case '/':
+		return true;
+	case '%': case '/':
+	{
+		const auto n = num;
+		const auto d = other.num;
+		
 		if (other.num == 0) // obligatory
 		{
 			parent.error().die()
 				<< "Cannot divide by zero";
 			return false;
 		}
-		out.num = num / other.num;
-		break;
+		if (op == '%')
+		{
+			int q = (int)(n / d);
+			out.num = n - q * d;
+		}
+		else
+			out.num = n / d;
+		
+		return true;
+	}
 	case '^':
 		out.num = pow(num, other.num);
-		break;
+		return true;
 	
 	default:
-		goto bad_input;
+		break;//goto bad_input;
 	}
-	
-	return true;
 	
 bad_input:
 	parent.error().die()
@@ -326,10 +336,20 @@ bool value::apply_unary (value& out, int op, state& parent)
 		return true;
 	
 	case lexer::token::keyword_hd:
-		if (!is_type(type_iterable))
-			goto bad_input;
-		out = list_get(0);
-		return true;
+		if (is_type(type_list))
+		{
+			out = list_obj->get(0);
+			return true;
+		}
+		if (is_type(type_string))
+		{
+			if (str.size() == 0)
+				out = value::from_string("");
+			else
+				out = value::from_string(str.substr(0, 1));
+			return true;
+		}
+		break;
 	
 	case lexer::token::keyword_tl:
 		if (is_type(type_list))
@@ -340,7 +360,7 @@ bool value::apply_unary (value& out, int op, state& parent)
 		if (is_type(type_string))
 		{
 			if (str.size() == 0)
-				out = *this;
+				out = value::from_string("");
 			else
 				out = value::from_string(str.substr(1));
 			return true;

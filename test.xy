@@ -1,19 +1,9 @@
-let distr (f, a) =
-	foldl(@{
-		let (z, x : f(x)) =
-			[ z. 0 + [x], z. 1 ]
-		let (z, x) =
-			[ z. 0, z. 1 + [x] ]
-		}, [ [], [] ], a)
-;
-
 let sort ([]) = []
 let .. (a) =
 	with ([p, a..] = a,
-			[l, r] = distr(`< p, a))
+			[l, r] = distribute(`< p, a))
 		sort(l) + [p] + sort(r)
 
 let main () =
-	with (a = [ 4, 2, 3, 1, 8, 3, 2, -2 ])
-		display("unsorted = ", a, "\n",
-		        "  sorted = ", sort(a), "\n")
+	[4, 2, 3, 1, 8, 3, 2, -2] -> sort
+		-> string -> (`+ "\n") -> display

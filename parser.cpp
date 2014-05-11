@@ -468,7 +468,7 @@ struct shunting_yard
 		case '.': case lexer::token::seq_token:
 			return 6;
 		
-		case '*': case '/':
+		case '*': case '/': case '%':
 			return 5;
 		
 		case '+': case '-':

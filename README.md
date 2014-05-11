@@ -1,4 +1,11 @@
-Syntax Overview (WIP)
+xy-lang
+===============================
+
+XY is a purely functional, stateless, dynamically typed programming language.
+
+It is currently interpreted, although a bootstrapped compiler is currently being written.
+
+Syntax Overview
 ===============================
 
 
@@ -28,15 +35,21 @@ Booleans
 
 Lists
 -------------------------------
-    [ 1, 2, 3 ]             ; = [ 1, 2, 3 ]
+    [1, 2, 3]               ; = [ 1, 2, 3 ]
     3 .. 9                  ; = [ 3, 4, 5, 6, 7, 8, 9 ]
-    [ 5, 9, 4 ] . 0         ; = 5
-    [ 5, 9, 4 ] . 1         ; = 9
-    [ 5, 6, 2, 3, 5 ] .. 2  ; = [ 2, 3, 5 ]
-    [ 1, 3, 2 ] + [ 7, 8 ]  ; = [ 1, 3, 2, 7, 8 ]
-    [ 1, 2 ] == [ 1, 2 ]    ; = true
-    [ 1, 2 ] == [ 2, 1 ]    ; = false
+    [5, 9, 4] . 0           ; = 5
+    [5, 9, 4] . 1           ; = 9
+    [5, 6, 2, 3, 5] .. 2    ; = [ 2, 3, 5 ]
+    [1, 3, 2] + [7, 8]      ; = [ 1, 3, 2, 7, 8 ]
+    [1, 2] == [1, 2]        ; = true
+    [1, 2] == [2, 1]        ; = false
+	
+There are also unary operators 'hd' and 'tl', similar to Scheme's (car) and (cdr)
 
+	hd [1, 2, 3, 4]         ; = 1
+	tl [1, 2, 3, 4]         ; = [2, 3, 4]
+	hd tl [1, 2, 3, 4]      ; = 2
+	
 Functions
 -------------------------------
 
@@ -56,25 +69,25 @@ Overloading with constants:
 Overloading with conditions:
 
     let sign (n : n < 0) = -1
-    let sign (n > 0) = 1  ; equiv. to 'let sign (n : n > 0) = 1'
-    let sign (0) = 0
+    let sign (n > 0) = 1       ; equiv. to 'let sign (n : n > 0) = 1'
+    let .. (0) = 0             ; '..' refers to the name of the last defined function
 
-    let main () = sign(-32)   ; = -1
+    let main () = sign(-32)    ; = -1
 
 Other parameters may be used in the conditions of a parameter
 
     let filter (f, []) = []
-    let filter (f, a : f(a . 0)) =
-        [ a . 0 ] +
-        filter(f, a .. 1)
+    let filter (f, a : f(hd a)) =
+        [hd a] +
+        filter(f, tl a)
     let filter (f, a) =
-        filter (f, a .. 1)
+        filter (f, tl a)
     ; see 'list comprehension' for built-in list filtering
 
 Alternative syntax:
 
     x -> y        ; equiv. to 'y(x)'
-    x -> f -> g   ; equiv. to 'g( f(x) )'
+    x -> f -> g   ; equiv. to 'g(f(x))'
 
 Order of operations precedence for '->' is less than numeral operators but greater than comparison operators
 
@@ -90,13 +103,24 @@ Syntax:
 
     with (var1 = value1, var2 = value2... )
         expression
-
+	
+	with ([item1, item2, item3..] = list, ...)
+		expression
+	
 Example:
 
     let area (diameter) =
         with (radius = diameter / 2, pi = 3.1415926535)
             pi * radius ^ 2
-
+	
+	let quadratic_formula (terms) =
+		with ([a, b, c] = terms)
+			[ (-b + (b ^ 2 - 4(a)(c)) ^ 0.5) / 2(a),
+			  (-b - (b ^ 2 - 4(a)(c)) ^ 0.5) / 2(a) ]
+	
+	let reverse (a) =
+		with ([head, a..] = a)
+			reverse(a) + [head]
 Lambdas
 -------------------------------
 
@@ -117,9 +141,9 @@ Example:
 Alternative Syntax:
 
     (&+)      ; equiv. to '(@(x, y) = x + y)'
-    (' * 2)   ; equiv. to '(@(x) = x * 2)'
+    (`* 2)   ; equiv. to '(@(x) = x * 2)'
 
-Planned, unimplented features:
+Planned, unimplented syntax:
 
     #(3 + 2)  ; equiv. to '(@() = 3 + 2)'
 
@@ -151,7 +175,11 @@ Syntax:
 Examples:
 
     with (foo = { x = 2, y = 3 })
-        foo
+        foo::x + foo::y             ; 5
+	
+	with (a = { x = 1, y = 2},
+			b = { x = 4, z = 3 })
+		(a + b)                     ; { x = 4, y = 2, z = 3 }
 
 
 Globals

@@ -81,7 +81,7 @@ void state::import_native_functions (environment& e)
 			(r.condition() ? a : b).push_back(v);
 		}
 		
-		// not really happy with thists
+		// not really happy with this
 		out = value::from_list(list::basic(std::vector<value> {
 				value::from_list(list::basic(a)),
 				value::from_list(list::basic(b)),
@@ -217,20 +217,18 @@ void state::import_native_functions (environment& e)
 		std::ifstream fs(args.get(0).str);
 		if (fs.good())
 		{
-			fs.seekg (0, std::ios::end);
-			int len = fs.tellg();
-			fs.seekg (0, std::ios::beg);
+			std::string line;
+			std::ostringstream ss;
 			
-			char* buf = new char[len];
-			fs.read(buf, len);
-			fs.close();
-			
-			std::string str(buf, len);
-			delete[] buf;
+			while (!fs.eof())
+			{
+				std::getline(fs, line);
+				ss << line << std::endl;
+			}
 			
 			return args.get(1).func_obj->call(out, argument_list
 					{
-						value::from_string(str)
+						value::from_string(ss.str())
 					}, s);
 		}
 		else

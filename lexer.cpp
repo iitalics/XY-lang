@@ -421,7 +421,7 @@ bool lexer::token::is_binary_op () const
 		tok == '^' || tok == '.' ||
 		tok == seq_token || tok == eql_token ||
 		tok == neq_token || tok == gre_token ||
-		tok == lse_token ||
+		tok == lse_token || tok == '%' ||
 		tok == keyword_and || tok == keyword_or ||
 		tok == rarr_token;
 }
