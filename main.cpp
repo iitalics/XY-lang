@@ -6,8 +6,8 @@
 #include "list.h"
 
 
-#define XY_VERSION "version 0.9.1 beta (c++11 build)"
-#define XY_COMPILE_INFO "last modified: may 7, 2014"
+#define XY_VERSION "version 0.9.2 beta (c++11 build)"
+#define XY_COMPILE_INFO "last modified: may 11, 2014"
 
 
 
