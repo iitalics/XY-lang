@@ -77,10 +77,10 @@ Overloading with conditions:
 Other parameters may be used in the conditions of a parameter
 
     let filter (f, []) = []
-    let filter (f, a : f(hd a)) =
+    let .. (f, a : f(hd a)) =
         [hd a] +
         filter(f, tl a)
-    let filter (f, a) =
+    let .. (f, a) =
         filter (f, tl a)
     ; see 'list comprehension' for built-in list filtering
 
@@ -104,7 +104,7 @@ Syntax:
     with (var1 = value1, var2 = value2... )
         expression
 	
-	with ([item1, item2, item3..] = list, ...)
+	with ([var1, var2, var3..] = list, ...) 
 		expression
 	
 Example:
@@ -119,8 +119,8 @@ Example:
 			  (-b - (b ^ 2 - 4(a)(c)) ^ 0.5) / 2(a) ]
 	
 	let reverse (a) =
-		with ([head, a..] = a)
-			reverse(a) + [head]
+		with ([head, tail..] = a)
+			reverse(tail) + [head]
 Lambdas
 -------------------------------
 
