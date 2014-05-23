@@ -3,7 +3,7 @@ xy-lang
 
 XY is a purely functional, stateless, dynamically typed programming language.
 
-It is currently interpreted, although a bootstrapped compiler is currently being written.
+It is currently interpreted, although [a bootstrapped compiler](https://github.com/iitalics/XY-lang-bootstrap) is currently being written.
 
 Syntax Overview
 ===============================
@@ -44,7 +44,7 @@ Lists
     [1, 2] == [1, 2]        ; = true
     [1, 2] == [2, 1]        ; = false
 	
-There are also unary operators 'hd' and 'tl', similar to Scheme's (car) and (cdr)
+There are also unary operators `hd` and `tl`, similar to Scheme's `(car)` and `(cdr)`
 
 	hd [1, 2, 3, 4]         ; = 1
 	tl [1, 2, 3, 4]         ; = [2, 3, 4]
@@ -89,7 +89,7 @@ Alternative syntax:
     x -> y        ; equiv. to 'y(x)'
     x -> f -> g   ; equiv. to 'g(f(x))'
 
-Order of operations precedence for '->' is less than numeral operators but greater than comparison operators
+Order of operations precedence for `->` is less than numeral operators but greater than comparison operators
 
     ; these are all equivalent
     c == a + b -> f
