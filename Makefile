@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-Wall -Wextra -Wno-unused-parameter -std=c++11
+CXXFLAGS=-Wall -Wextra -Wno-unused-parameter -std=c++11 -O3
 
 LINK=g++
 LINKFLAGS=-lm -O3

@@ -278,7 +278,7 @@ void state::import_native_functions (environment& e)
 	});
 	e.add_native("try", [] ( _args_ )
 	{
-		if (!args.check("fwrite", s, { value::type_function, value::type_function }))
+		if (!args.check("try", s, { value::type_function, value::type_function }))
 			return false;
 		
 		if (!args.get(0).func_obj->call(out, argument_list(), s))

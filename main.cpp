@@ -7,7 +7,7 @@
 
 
 #define XY_VERSION "version 0.9.2 beta (c++11 build)"
-#define XY_COMPILE_INFO "last modified: may 11, 2014"
+#define XY_COMPILE_INFO "last modified: may 14, 2014"
 
 
 
@@ -15,7 +15,7 @@
 static int help_text ()
 {
 	std::cout << "usage:  xy [flags] PROGRAM [program arguments]\n"
-	             "\n"
+	             //"\n"
 				 "   --version          display version info\n"
 				 "   -h, --help         show this help text\n";
 	return 0;
